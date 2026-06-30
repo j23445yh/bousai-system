@@ -1,0 +1,9 @@
+{
+  "name": "防災避難学習システム",
+  "short_name": "防災学習",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#eef3f8",
+  "theme_color": "#1d3557",
+  "orientation": "portrait"
+}

@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1d3557">
+<link rel="manifest" href="manifest.json">
+
+<title>防災避難学習システム</title>
+
+<style>
+
+body{
+    margin:0;
+    background:#eef3f8;
+    font-family:"Yu Gothic", sans-serif;
+}
+
+header{
+    background:#1d3557;
+    color:white;
+    text-align:center;
+    padding:18px;
+    font-size:28px;
+    font-weight:bold;
+}
+
+#gpsInfo{
+    background:white;
+    margin:15px;
+    padding:15px;
+    border-radius:10px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.15);
+}
+
+#map{
+    height:350px;
+    margin:15px;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+#event{
+    background:white;
+    width:90%;
+    max-width:800px;
+    margin:20px auto;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.15);
+}
+
+.story{
+    background:#f8f9fa;
+    border-left:6px solid #457b9d;
+    padding:15px;
+    border-radius:8px;
+    line-height:1.8;
+    white-space:pre-line;
+}
+
+textarea{
+    width:100%;
+    height:120px;
+    margin-top:15px;
+    padding:15px;
+    box-sizing:border-box;
+    border-radius:10px;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    margin-top:15px;
+    border:none;
+    border-radius:10px;
+    background:#457b9d;
+    color:white;
+    font-size:18px;
+}
+
+#result{
+    margin-top:20px;
+    padding:20px;
+    display:none;
+    border-radius:10px;
+}
+
+.correct{
+    background:#d8f3dc;
+}
+
+.incorrect{
+    background:#ffe5e5;
+}
+
+/* ---------- スマホ対応 ---------- */
+
+@media screen and (max-width:768px){
+
+header{
+    font-size:22px;
+    padding:14px;
+}
+
+#map{
+    height:300px;
+    margin:10px;
+}
+
+#gpsInfo,
+#positionText{
+    margin:10px;
+    font-size:15px;
+}
+
+#event{
+    width:95%;
+    margin:10px auto;
+    padding:15px;
+}
+
+.story{
+    font-size:15px;
+}
+
+textarea{
+    height:140px;
+    font-size:16px;
+}
+
+button{
+    font-size:18px;
+    padding:18px;
+}
+
+}
+
+</style>
+<link
+rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script
+src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+</head>
+
+<body>
+
+<header>
+防災避難学習システム
+</header>
+
+<div id="gpsInfo">
+現在地取得中...
+</div>
+
+<div id="map"></div>
+
+<button onclick="moveCurrentLocation()">
+現在地へ戻る
+</button>
+
+<div id="positionText"
+style="
+margin:15px;
+background:white;
+padding:10px;
+border-radius:10px;
+">
+現在地取得中...
+</div>
+
+<div id="event" style="display:none;">
+
+<h2 id="eventTitle">災害イベント</h2>
+
+<div class="story" id="storyText">
+イベント読み込み中...
+</div>
+
+<br>
+
+<b>あなたならどのように行動しますか？</b>
+
+<textarea
+id="answer"
+placeholder="避難行動を自由に記述してください">
+</textarea>
+
+<button onclick="checkAnswer()">
+回答する
+</button>
+
+<button onclick="generateEvent()">
+別の災害イベントを発生させる
+</button>
+
+<div id="result"></div>
+
+</div>
+
+<script>
+
+if(location.protocol!="https:" && location.hostname!="localhost"){
+
+alert("GPSを利用するにはHTTPSで公開してください。");
+
+}
+
+// GPS取得
+/*
+navigator.geolocation.getCurrentPosition(
+function(){},
+function(){}
+);
+if(navigator.geolocation){
+navigator.geolocation.watchPosition(
+
+function(position){
+
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+
+    document.getElementById("gpsInfo").innerHTML =
+    "<b>現在地取得成功</b><br>" +
+    "緯度：" + lat.toFixed(5) +
+    "<br>経度：" + lon.toFixed(5);
+
+    document.getElementById("positionText").innerHTML =
+    "現在地<br>" +
+    lat.toFixed(5) +
+    "<br>" +
+    lon.toFixed(5);
+
+    // 初回のみ地図生成
+    if(!map){
+
+        map = L.map('map',{
+
+    zoomControl:true,
+    tap:true
+
+}).setView(
+            [lat, lon],
+            15
+        );
+
+        L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+                attribution:
+                '&copy; OpenStreetMap contributors'
+            }
+        ).addTo(map);
+
+        marker = L.circleMarker(
+            [lat, lon],
+            {
+                radius:10,
+                color:"blue",
+                fillColor:"blue",
+                fillOpacity:0.8
+            }
+        ).addTo(map);
+
+        dangerCircle = L.circle(
+            [lat, lon],
+            {
+                radius:500,
+                color:"blue",
+                fillColor:"#66ccff",
+                fillOpacity:0.15
+            }
+        ).addTo(map);
+
+        createEventPins(lat, lon);
+
+    }
+    else{
+
+        // 現在地更新
+        marker.setLatLng([lat, lon]);
+
+        // サークル更新
+        dangerCircle.setLatLng([lat, lon]);
+	
+	if(eventMarker){
+
+    const center =
+    marker.getLatLng();
+
+    createEventPins(
+        center.lat,
+        center.lng
+    );
+}else{
+
+alert("この端末ではGPSが利用できません。");
+
+}
+
+}
+    }
+
+    // 地図中心も移動
+    marker.setLatLng([lat, lon]);
+    dangerCircle.setLatLng([lat, lon]);
+
+},
+
+function(error){
+
+    document.getElementById("gpsInfo").innerHTML =
+    "GPS取得に失敗しました";
+
+},
+
+{
+    enableHighAccuracy:true,
+    maximumAge:1000,
+    timeout:10000
+}
+
+);
+
+*/
+let map;
+let marker;
+let eventMarkers = []; // 災害イベントピン
+let dangerCircle; // 範囲表示
+
+let selectedEventMarker = null;
+
+navigator.geolocation.watchPosition(
+
+function(position){
+
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+
+    document.getElementById("gpsInfo").innerHTML =
+    "<b>現在地取得成功</b><br>" +
+    "緯度：" + lat.toFixed(5) +
+    "<br>経度：" + lon.toFixed(5);
+
+    document.getElementById("positionText").innerHTML =
+    "現在地<br>" +
+    lat.toFixed(5) +
+    "<br>" +
+    lon.toFixed(5);
+
+    // 初回のみ地図生成
+    if(!map){
+
+        map = L.map('map',{
+
+    zoomControl:true,
+    tap:true
+
+}).setView(
+            [lat, lon],
+            15
+        );
+
+        L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+                attribution:
+                '&copy; OpenStreetMap contributors'
+            }
+        ).addTo(map);
+
+        marker = L.circleMarker(
+            [lat, lon],
+            {
+                radius:10,
+                color:"blue",
+                fillColor:"blue",
+                fillOpacity:0.8
+            }
+        ).addTo(map);
+
+        dangerCircle = L.circle(
+            [lat, lon],
+            {
+                radius:500,
+                color:"blue",
+                fillColor:"#66ccff",
+                fillOpacity:0.15
+            }
+        ).addTo(map);
+
+        createEventPins(lat, lon);
+
+    }
+    else{
+
+        // 現在地更新
+        marker.setLatLng([lat, lon]);
+
+        // サークル更新
+        dangerCircle.setLatLng([lat, lon]);
+
+    }
+
+    // 地図中心も移動
+    map.setView([lat, lon]);
+
+},
+
+function(error){
+
+    document.getElementById("gpsInfo").innerHTML =
+    "GPS取得に失敗しました";
+
+},
+
+{
+    enableHighAccuracy:true,
+    maximumAge:1000,
+    timeout:10000
+}
+
+);
+
+
+// ランダムイベント
+
+const events = [
+
+{
+title:"津波警報",
+story:`
+放課後。
+
+あなたは友人と一緒に帰宅していた。
+
+夕焼けに染まる街並みを歩いていると、突然スマートフォンから大きな警報音が鳴り響く。
+
+「緊急地震速報です。強い揺れに警戒してください。」
+
+直後、大地が大きく揺れ始めた。
+
+電柱がきしみ、周囲から悲鳴が聞こえる。
+
+数分後、さらに新しい通知が届いた。
+
+「津波警報発令。海や川から離れ、直ちに高台へ避難してください。」
+
+友人は焦った様子で言った。
+
+「橋を渡れば近道だ！急ごう！」
+
+しかし、あなたは授業で学んだことを思い出した。
+
+『津波は川を逆流することがある。川や橋には近づかないこと。』
+
+あなたなら、どのように行動するだろうか。
+`,
+keywords:["高台","避難","離れる","橋を渡らない","川に近づかない"],
+success:`
+
+<h3>避難成功</h3>
+
+あなたは友人を呼び止めた。
+
+「橋は危険だ。高台へ行こう。」
+
+友人は少し迷ったが、あなたの言葉にうなずいた。
+
+二人は坂道を駆け上がり、高台の避難所を目指した。
+
+避難所へ到着した直後、遠くから大きな水音が聞こえる。
+
+振り返ると、川の水位が急激に上昇し、橋の周辺は濁流に飲み込まれていた。
+
+友人は青ざめた顔でつぶやいた。
+
+「もし橋を渡っていたら……。」
+
+あなたは安全な場所から状況を見守りながら、自分の判断が命を守ったことを実感した。
+`,
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたは友人の言葉に従い、橋へ向かった。
+
+「近道なら早く帰れる。」
+
+そう考えたからだ。
+
+しかし橋へ近づくにつれて、水の流れる音が大きくなっていく。
+
+次の瞬間。
+
+濁った水が川からあふれ出した。
+
+「危ない！」
+
+周囲から叫び声が聞こえる。
+
+あなたたちは慌てて引き返そうとしたが、すでに道路の一部は冠水していた。
+
+避難が遅れたことで、安全な高台へ移動する時間を失ってしまった。
+
+災害時には、近道よりも安全な避難行動を優先することが重要である。
+`
+},
+
+{
+title:"大地震発生",
+story:`
+休日の午後。
+
+あなたは商店街を歩いていた。
+
+突然、地面が大きく揺れ始める。
+
+商品棚が倒れ、ガラスが割れる音が響いた。
+
+人々はパニックになり、あちこちへ走り出している。
+
+近くには古いビルと広い公園がある。
+
+余震が来るかもしれない。
+
+あなたならどう行動するだろうか。
+`,
+keywords:["広場","公園","避難","建物から離れる","安全"],
+success:`
+
+<h3>避難成功</h3>
+
+あなたは周囲を確認しながら、公園へ向かって移動した。
+
+頭上に落下物の危険がないことを確認し、安全な広場で身を守る。
+
+しばらくすると大きな余震が発生した。
+
+しかし周囲には倒れてくる建物もなく、あなたは無事だった。
+
+落ち着いて情報を集めながら、安全に避難することができた。
+`,
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたは古いビルの軒下へ逃げ込んだ。
+
+その方が安全だと思ったからだ。
+
+しかし余震が発生した瞬間、建物の壁の一部が崩れ落ちた。
+
+周囲にはガラス片や瓦礫が散乱する。
+
+幸い大きなけがはなかったが、危険な場所へ近づいたことで避難が遅れてしまった。
+
+地震発生時には、建物や落下物から離れた安全な場所へ移動することが重要である。
+`
+},
+
+{
+title:"河川氾濫警報",
+story:`
+数日間降り続いた大雨。
+
+あなたが帰宅していると、市役所から避難情報が届いた。
+
+「河川の水位が危険水準に達しました。」
+
+近くの川を見ると、水面は普段よりはるかに高い。
+
+友人は言った。
+
+「まだ大丈夫そうだし、このまま帰ろう。」
+
+しかし空は暗く、雨脚はさらに強まっている。
+
+あなたならどうするだろうか。
+`,
+keywords:["高台","避難","川から離れる","安全"],
+success:`
+
+<h3>避難成功</h3>
+
+あなたは危険を感じ、高台の避難所へ向かった。
+
+避難所に到着してしばらくすると、川の水が堤防を越え始めた。
+
+避難所の窓から見える道路は徐々に水没していく。
+
+「早めに避難して正解だった。」
+
+あなたは災害情報を信じて行動したことで、安全を確保することができた。
+`,
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたはまだ大丈夫だと考え、そのまま帰宅を続けた。
+
+しかし雨はさらに激しくなり、道路には水があふれ始める。
+
+気が付いたときには周囲の道路が冠水し、移動が困難になっていた。
+
+避難するタイミングを逃したことで、安全な場所へ向かうことが難しくなってしまった。
+
+河川氾濫では、「まだ大丈夫」が最も危険な判断になることがある。
+`
+},
+
+{
+title:"エレベーター閉じ込め事故",
+story:`
+平日の夕方。
+
+あなたはデパートで買い物を終え、帰宅しようとしていた。
+
+荷物を抱えながらエレベーターに乗り込み、閉まる扉を眺めている。
+
+すると突然――
+
+ゴゴゴゴゴ……
+
+床が大きく揺れた。
+
+緊急地震速報が館内に響き渡る。
+
+「緊急地震速報です。身の安全を確保してください。」
+
+エレベーターは急停止し、照明が一瞬消えた。
+
+次の瞬間、非常灯だけが薄暗く点灯する。
+
+どうやら大地震によってエレベーターが停止したらしい。
+
+スマートフォンを見ると通信は不安定になっている。
+
+閉ざされた空間の中で、不安が一気に押し寄せた。
+
+「早くここから出なきゃ……。」
+
+しかし、無理に脱出しようとするのは危険かもしれない。
+
+あなたならどのように行動するだろうか。
+`,
+keywords:[
+"非常ボタン",
+"救助",
+"待機",
+"落ち着く",
+"連絡",
+"非常電話"
+],
+
+success:`
+
+あなたは深呼吸をした。
+
+焦る気持ちを抑えながら、まず周囲を確認する。
+
+幸い、けが人はいない。
+
+あなたはエレベーター内の非常ボタンを押した。
+
+「こちら管理室です。現在地震の影響で停止しています。救助を手配していますので、そのままお待ちください。」
+
+落ち着いた声が聞こえた。
+
+あなたは無理に脱出しようとせず、救助を待つことを選んだ。
+
+数十分後。
+
+外から作業員たちの声が聞こえる。
+
+「救助を開始します。」
+
+扉がゆっくりと開いた。
+
+外へ出ると、多くの人々が避難誘導を受けていた。
+
+あなたは冷静な判断によって二次災害を防ぎ、安全に救助されることができた。
+
+災害時には、閉じ込められても慌てずに救助を待つことが重要である。
+`,
+
+failure:`
+
+あなたは強い不安に襲われた。
+
+「早く出なければ。」
+
+そう考えたあなたは、停止したエレベーターの扉を無理にこじ開けようとした。
+
+わずかに開いた隙間から外をのぞく。
+
+しかし、エレベーターは階と階の間で停止していた。
+
+足元には大きな段差がある。
+
+その瞬間。
+
+余震が発生した。
+
+ガタン！
+
+エレベーターが大きく揺れる。
+
+あなたはバランスを崩し、危うく転落しそうになった。
+
+幸い大事故にはならなかったが、無理な脱出行動によって重大な危険にさらされてしまった。
+
+災害時のエレベーター閉じ込めでは、自力脱出を試みず、非常ボタンで連絡して救助を待つことが重要である。
+`
+},
+
+{
+title:"土砂崩れ警戒",
+story:`
+夏休み。
+
+あなたは家族と山あいの温泉地へ旅行に来ていた。
+
+朝から激しい雨が降り続いていたが、宿の人は
+
+「この辺りではよく降る雨ですよ。」
+
+と話していた。
+
+昼過ぎになると、市からスマートフォンへ通知が届く。
+
+「土砂災害警戒情報が発表されました。」
+
+山の斜面を見ると、小石が転がり落ち、木々が揺れている。
+
+家族は言った。
+
+「もう少し様子を見ようか。」
+
+しかし、雨はさらに強くなり、不気味な音が山の方から聞こえてきた。
+
+あなたならどのように行動するだろうか。
+`,
+keywords:[
+"避難",
+"斜面から離れる",
+"高い建物",
+"避難所",
+"安全"
+],
+
+success:`
+
+<h3>避難成功</h3>
+
+あなたは危険を感じ、家族を説得して避難所へ向かった。
+
+避難所へ到着して間もなく、
+
+山の斜面が大きな音を立てて崩れ始めた。
+
+大量の土砂が道路を飲み込み、宿泊施設の近くまで流れ込んだ。
+
+「早めに避難して本当に良かった。」
+
+家族は胸をなで下ろした。
+
+土砂災害では危険を感じたら早めに避難することが重要である。
+`,
+
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたはまだ大丈夫だと思い、その場に残ることを選んだ。
+
+突然、
+
+ゴゴゴゴゴ……
+
+という大きな音が山から響いた。
+
+土砂が一気に斜面を滑り落ち、
+
+道路は土砂で埋まり避難経路も失われた。
+
+幸い救助されたが、
+
+避難が遅れたことで大きな危険にさらされてしまった。
+
+土砂災害では早めの避難が命を守る。
+`
+},
+
+{
+title:"大型台風接近",
+story:`
+秋。
+
+ニュースでは
+
+「非常に強い台風が接近しています。」
+
+と繰り返し放送されていた。
+
+あなたは帰宅途中だった。
+
+風は次第に強くなり、
+
+道路には折れた枝が散乱している。
+
+友人は言った。
+
+「まだ家まで歩けそうだよ。」
+
+しかし、空は急速に暗くなり、
+
+看板や植木鉢が風で大きく揺れ始めた。
+
+あなたならどのように行動するだろうか。
+`,
+keywords:[
+"建物",
+"避難",
+"屋内",
+"安全",
+"飛来物"
+],
+
+success:`
+
+<h3>避難成功</h3>
+
+あなたは近くの頑丈な建物へ避難した。
+
+その直後、
+
+暴風が吹き荒れ、
+
+看板や木の枝が道路へ飛ばされていった。
+
+屋内にいたあなたは安全に過ごすことができた。
+
+台風時には無理な移動を避け、
+
+安全な建物へ避難することが重要である。
+`,
+
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたは家まで歩いて帰ろうとした。
+
+突然、
+
+強風で看板が倒れ、
+
+飛ばされた枝が目の前を横切った。
+
+転倒して避難が遅れ、
+
+危険な状況になってしまった。
+
+台風では屋外を歩き続けることは非常に危険である。
+`
+},
+
+{
+title:"火山噴火",
+story:`
+休日。
+
+あなたは観光地として有名な火山の近くを訪れていた。
+
+突然、
+
+ドーン！！
+
+という大きな音が響く。
+
+山頂から黒い煙が立ち上り、
+
+火山灰が空を覆い始めた。
+
+防災無線が流れる。
+
+「火山が噴火しました。避難してください。」
+
+近くの人は写真を撮ろうとしている。
+
+あなたならどのように行動するだろうか。
+`,
+keywords:[
+"避難",
+"離れる",
+"屋内",
+"火山灰",
+"安全"
+],
+
+success:`
+
+<h3>避難成功</h3>
+
+あなたは火山から離れ、
+
+建物の中へ避難した。
+
+火山灰が降り始めたが、
+
+屋内だったため安全を確保できた。
+
+噴火では火山に近づかず、
+
+速やかに避難することが重要である。
+`,
+
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたは噴火の様子を見ようと近づいた。
+
+火山灰が激しく降り始め、
+
+視界はほとんど見えなくなった。
+
+さらに小さな噴石が飛んできた。
+
+危険な場所へ近づいたことで、
+
+避難が大幅に遅れてしまった。
+
+火山噴火では見物に行かず、
+
+すぐ避難することが重要である。
+`
+},
+
+{
+title:"豪雪による雪害",
+story:`
+真冬。
+
+あなたは学校から帰宅していた。
+
+朝から雪が降っていたが、
+
+午後になると急激に積雪が増え始めた。
+
+スマートフォンには
+
+「大雪警報」
+
+が表示される。
+
+友人は言った。
+
+「近道の山道を通れば早く帰れるよ。」
+
+しかし、
+
+風雪はますます強まり、
+
+周囲の視界も悪くなってきた。
+
+あなたならどのように行動するだろうか。
+`,
+keywords:[
+"建物",
+"避難",
+"山道を避ける",
+"安全",
+"屋内"
+],
+
+success:`
+
+<h3>避難成功</h3>
+
+あなたは近道をやめ、
+
+近くの公共施設へ避難した。
+
+外では吹雪が激しくなり、
+
+道路は真っ白になっていた。
+
+安全な場所で天候の回復を待ったことで、
+
+無事に帰宅することができた。
+
+豪雪では無理な移動を避けることが重要である。
+`,
+
+failure:`
+
+<h3>避難失敗</h3>
+
+あなたは山道を進むことを選んだ。
+
+吹雪はさらに強まり、
+
+周囲が見えなくなった。
+
+足元も滑りやすく、
+
+転倒して動けなくなってしまった。
+
+豪雪では近道よりも安全を優先することが重要である。
+`
+}
+
+];
+
+let currentEvent;
+let currentPin = null;
+
+
+// イベント生成
+
+function generateEvent(){
+
+    currentEvent =
+    events[Math.floor(Math.random()*events.length)];
+
+    document.getElementById("eventTitle").innerText =
+    currentEvent.title;
+
+    document.getElementById("storyText").innerHTML =
+    currentEvent.story;
+
+    document.getElementById("answer").value = "";
+
+    document.getElementById("result").style.display =
+    "none";
+
+}
+
+document.getElementById("event").style.display = "none";
+window.scrollTo({
+
+    top:0,
+
+    behavior:"smooth"
+
+});
+
+function createEventPins(lat, lon){
+
+    // 古いピン削除
+    eventMarkers.forEach(marker=>{
+        map.removeLayer(marker);
+    });
+
+    eventMarkers = [];
+
+    // 3～10個のランダム数
+    const pinCount =
+    Math.floor(Math.random()*8)+3;
+
+    for(let i=0;i<pinCount;i++){
+
+        const radius = 0.008;
+
+        const randomLat =
+        lat + (Math.random()-0.5)*radius;
+
+        const randomLon =
+        lon + (Math.random()-0.5)*radius;
+
+        const marker = L.marker(
+            [randomLat, randomLon]
+        ).addTo(map);
+
+        marker.bindPopup(
+            "災害発生地点"
+        );
+
+        marker.on("click",function(){
+
+            generateEvent();
+
+            // クリックしたピンを保存
+            currentPin = marker;
+
+            // イベント画面表示
+            document.getElementById("event").style.display =
+            "block";
+
+            document
+            .getElementById("event")
+            .scrollIntoView({
+                behavior:"smooth"
+            });
+
+        });
+
+        eventMarkers.push(marker);
+
+    }
+
+}
+
+function refreshEventPins(){
+
+    if(!marker) return;
+
+    const center =
+    marker.getLatLng();
+
+    createEventPins(
+        center.lat,
+        center.lng
+    );
+
+}
+
+//★★★★ここに追加★★★★
+function moveCurrentLocation(){
+
+    if(marker){
+
+        const pos = marker.getLatLng();
+
+        map.setView(pos,16);
+
+    }
+
+}
+
+// 判定
+
+function checkAnswer(){
+
+    const answer =
+    document.getElementById("answer").value;
+
+    const result =
+    document.getElementById("result");
+
+    let correct = false;
+
+    for(let keyword of currentEvent.keywords){
+
+        if(answer.includes(keyword)){
+            correct = true;
+            break;
+        }
+    }
+
+	if(correct){
+
+	result.style.display = "block";
+	result.className = "correct";
+
+	result.innerHTML = currentEvent.success;
+
+	}else{
+
+	result.style.display = "block";
+	result.className = "incorrect";
+
+	result.innerHTML = currentEvent.failure;
+
+	}
+
+    // 3秒後にイベント終了
+setTimeout(function(){
+
+    // イベント画面を閉じる
+    document.getElementById("event").style.display =
+    "none";
+
+    // 結果を消す
+    result.style.display = "none";
+
+    // 回答欄初期化
+    document.getElementById("answer").value = "";
+
+    // クリックしたピンを削除
+    if(currentPin){
+
+        map.removeLayer(currentPin);
+
+        eventMarkers =
+        eventMarkers.filter(
+            m => m !== currentPin
+        );
+
+        currentPin = null;
+    }
+
+},3000);
+
+    }
+
+if(map && marker){
+
+    const center =
+    marker.getLatLng();
+
+    createEventPins(
+        center.lat,
+        center.lng
+    );
+
+// 回答済みイベントを削除
+if(selectedEventMarker){
+
+    map.removeLayer(selectedEventMarker);
+
+    eventMarkers =
+    eventMarkers.filter(
+        m => m !== selectedEventMarker
+    );
+
+    selectedEventMarker = null;
+}
+
+// イベント画面を閉じる
+document.getElementById("event").style.display =
+"none";
+
+}
+
+// 1分ごとに災害ピンを再配置
+setInterval(function(){
+
+    refreshEventPins();
+
+},3600000);
+
+
+
+</script>
+
+</body>
+</html>
