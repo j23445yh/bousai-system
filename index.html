@@ -197,6 +197,10 @@ placeholder="避難行動を自由に記述してください">
 別の災害イベントを発生させる
 </button>
 
+<button onclick="retryWrongEvent()">
+間違えた問題をもう一度解く
+</button>
+
 <div id="result"></div>
 
 </div>
@@ -1019,7 +1023,8 @@ failure:`
 
 let currentEvent;
 let currentPin = null;
-
+// 間違えた問題を保存する
+let retryEvent = null;
 
 // イベント生成
 
@@ -1106,17 +1111,32 @@ function createEventPins(lat, lon){
 
 }
 
-function refreshEventPins(){
+function retryWrongEvent(){
 
-    if(!marker) return;
+    if(retryEvent == null){
 
-    const center =
-    marker.getLatLng();
+        alert("まだ解きなおす問題はありません。");
+        return;
 
-    createEventPins(
-        center.lat,
-        center.lng
-    );
+    }
+
+    currentEvent = retryEvent;
+
+    document.getElementById("eventTitle").innerText =
+    currentEvent.title;
+
+    document.getElementById("storyText").innerHTML =
+    currentEvent.story;
+
+    document.getElementById("answer").value = "";
+
+    document.getElementById("result").style.display =
+    "none";
+
+    document.getElementById("event").style.display =
+    "block";
+
+}
 
 }
 
@@ -1154,6 +1174,7 @@ function checkAnswer(){
     }
 
 	if(correct){
+	retryEvent = null;
 
 	result.style.display = "block";
 	result.className = "correct";
@@ -1166,6 +1187,8 @@ function checkAnswer(){
 	result.className = "incorrect";
 
 	result.innerHTML = currentEvent.failure;
+	// 間違えた問題を保存
+	retryEvent = currentEvent;
 
 	}
 
