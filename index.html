@@ -137,6 +137,41 @@ button{
 
 }
 
+#retryButton{
+
+    position:absolute;
+    top:10px;
+    right:10px;
+    width:auto;
+
+}
+
+#wrongList{
+
+    display:none;
+
+    position:fixed;
+
+    top:10%;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    width:80%;
+
+    background:white;
+
+    border-radius:10px;
+
+    padding:20px;
+
+    box-shadow:0 0 10px gray;
+
+    z-index:9999;
+
+}
+
 </style>
 <link
 rel="stylesheet"
@@ -151,6 +186,12 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 
 <header>
 防災避難学習システム
+
+<button id="retryButton"
+onclick="showWrongList()">
+解きなおし
+</button>
+
 </header>
 
 <div id="gpsInfo">
@@ -203,6 +244,15 @@ placeholder="避難行動を自由に記述してください">
 </button>
 
 <div id="result"></div>
+
+</div>
+
+<div id="wrongList">
+
+<h2>間違えた問題一覧</h2>
+
+<div id="wrongListContent">
+</div>
 
 </div>
 
@@ -1024,8 +1074,10 @@ failure:`
 
 let currentEvent;
 let currentPin = null;
-// 間違えた問題を保存する
+// 解きなおし用
 let retryEvent = null;
+// 間違えた問題を保存する
+let wrongEvents = [];
 
 // イベント生成
 
@@ -1139,6 +1191,58 @@ function retryWrongEvent(){
 
 }
 
+function showWrongList(){
+
+    const area =
+    document.getElementById("wrongListContent");
+
+    area.innerHTML="";
+
+    wrongEvents.forEach(function(event){
+
+        const btn =
+        document.createElement("button");
+
+        btn.innerHTML=event.title;
+
+        btn.onclick=function(){
+
+            retryQuestion(event);
+
+        };
+
+        area.appendChild(btn);
+
+    });
+
+    document.getElementById("wrongList").style.display="block";
+
+}
+
+function retryQuestion(event){
+
+    if(confirm("この問題を解き直しますか？")){
+
+        currentEvent=event;
+
+        document.getElementById("eventTitle").innerHTML=
+        currentEvent.title;
+
+        document.getElementById("storyText").innerHTML=
+        currentEvent.story;
+
+        document.getElementById("answer").value="";
+
+        document.getElementById("result").style.display="none";
+
+        document.getElementById("wrongList").style.display="none";
+
+        document.getElementById("event").style.display="block";
+
+    }
+
+}
+
 //★★★★ここに追加★★★★
 function moveCurrentLocation(){
 
@@ -1173,7 +1277,10 @@ function checkAnswer(){
     }
 
 	if(correct){
-	retryEvent = null;
+            wrongEvents =
+            wrongEvents.filter(
+                e => e !== currentEvent
+            );
 
 	result.style.display = "block";
 	result.className = "correct";
@@ -1188,8 +1295,13 @@ function checkAnswer(){
 	result.innerHTML = currentEvent.failure;
 
 	// 間違えた問題を保存
-	retryEvent = currentEvent;
-	}
+    if(!wrongEvents.includes(currentEvent)){
+
+        wrongEvents.push(currentEvent);
+
+    }
+
+    retryEvent = currentEvent;
 
     // 3秒後にイベント終了
 setTimeout(function(){
@@ -1253,11 +1365,17 @@ document.getElementById("event").style.display =
 // 1分ごとに災害ピンを再配置
 setInterval(function(){
 
-    refreshEventPins();
+    if(map && marker){
+
+        const center = marker.getLatLng();
+
+        createEventPins(center.lat, center.lng);
+
+    }
 
 },3600000);
 
-
+}
 
 </script>
 
