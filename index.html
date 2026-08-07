@@ -17,6 +17,7 @@ body{
 }
 
 header{
+    position:relative;
     background:#1d3557;
     color:white;
     text-align:center;
@@ -79,6 +80,21 @@ button{
     font-size:18px;
 }
 
+#retryButton{
+
+    position:absolute;
+    top:10px;
+    right:10px;
+
+    width:auto;
+    padding:10px 18px;
+
+    font-size:15px;
+
+    background:#e63946;
+
+}
+
 #result{
     margin-top:20px;
     padding:20px;
@@ -94,11 +110,46 @@ button{
     background:#ffe5e5;
 }
 
+#wrongList{
+
+display:none;
+
+position:fixed;
+
+top:50%;
+
+left:50%;
+
+transform:translate(-50%,-50%);
+
+width:80%;
+
+max-width:500px;
+
+background:white;
+
+padding:20px;
+
+border-radius:15px;
+
+box-shadow:0 0 15px gray;
+
+z-index:9999;
+
+}
+
+#wrongList button{
+
+margin-top:10px;
+
+}
+
 /* ---------- スマホ対応 ---------- */
 
 @media screen and (max-width:768px){
 
 header{
+    position:relative;
     font-size:22px;
     padding:14px;
 }
@@ -134,40 +185,54 @@ button{
     padding:18px;
 }
 
-}
-
 #retryButton{
 
     position:absolute;
     top:10px;
     right:10px;
+
     width:auto;
+    padding:10px 18px;
+
+    font-size:15px;
+
+    background:#e63946;
 
 }
 
 #wrongList{
 
-    display:none;
+display:none;
 
-    position:fixed;
+position:fixed;
 
-    top:10%;
+top:50%;
 
-    left:50%;
+left:50%;
 
-    transform:translateX(-50%);
+transform:translate(-50%,-50%);
 
-    width:80%;
+width:80%;
 
-    background:white;
+max-width:500px;
 
-    border-radius:10px;
+background:white;
 
-    padding:20px;
+padding:20px;
 
-    box-shadow:0 0 10px gray;
+border-radius:15px;
 
-    z-index:9999;
+box-shadow:0 0 15px gray;
+
+z-index:9999;
+
+}
+
+#wrongList button{
+
+margin-top:10px;
+
+}
 
 }
 
@@ -184,10 +249,11 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 <body>
 
 <header>
+
 防災避難学習システム
 
 <button id="retryButton"
-onclick="retryWrongEvent()">
+onclick="showWrongList()">
 解きなおし
 </button>
 
@@ -238,20 +304,8 @@ placeholder="避難行動を自由に記述してください">
 別の災害イベントを発生させる
 </button>
 
-<button onclick="retryWrongEvent()">
-間違えた問題をもう一度解く
-</button>
 
 <div id="result"></div>
-
-</div>
-
-<div id="wrongList">
-
-<h2>間違えた問題一覧</h2>
-
-<div id="wrongListContent">
-</div>
 
 </div>
 
@@ -1073,9 +1127,7 @@ failure:`
 
 let currentEvent;
 let currentPin = null;
-// 解きなおし用
-let retryEvent = null;
-// 間違えた問題を保存する
+// 解きなおし用に間違えた問題を保存
 let wrongEvents = [];
 
 // イベント生成
@@ -1163,16 +1215,9 @@ function createEventPins(lat, lon){
 
 }
 
-function retryWrongEvent(){
+function retryWrongEvent(index){
 
-    if(retryEvent == null){
-
-        alert("まだ解きなおす問題はありません。");
-        return;
-
-    }
-
-    currentEvent = retryEvent;
+    currentEvent = wrongEvents[index];
 
     document.getElementById("eventTitle").innerText =
     currentEvent.title;
@@ -1180,65 +1225,53 @@ function retryWrongEvent(){
     document.getElementById("storyText").innerHTML =
     currentEvent.story;
 
-    document.getElementById("answer").value = "";
+    document.getElementById("answer").value="";
 
-    document.getElementById("result").style.display =
-    "none";
+    document.getElementById("result").style.display="none";
 
-    document.getElementById("event").style.display =
+    document.getElementById("event").style.display="block";
+
+    closeWrongList();
+
+}
+
+// 間違えた問題一覧を表示
+function showWrongList(){
+
+    const list =
+    document.getElementById("wrongListContent");
+
+    list.innerHTML = "";
+
+    if(wrongEvents.length == 0){
+
+        list.innerHTML =
+        "<p>間違えた問題はありません。</p>";
+
+    }else{
+
+        wrongEvents.forEach(function(event,index){
+
+            list.innerHTML +=
+            `<button onclick="retryWrongEvent(${index})">
+                ${event.title}
+            </button><br>`;
+
+        });
+
+    }
+
+    document.getElementById("wrongList").style.display =
     "block";
 
 }
 
-function showWrongList(){
 
-    const area =
-    document.getElementById("wrongListContent");
+// 一覧を閉じる
+function closeWrongList(){
 
-    area.innerHTML="";
-
-    wrongEvents.forEach(function(event){
-
-        const btn =
-        document.createElement("button");
-
-        btn.innerHTML=event.title;
-
-        btn.onclick=function(){
-
-            retryQuestion(event);
-
-        };
-
-        area.appendChild(btn);
-
-    });
-
-    document.getElementById("wrongList").style.display="block";
-
-}
-
-function retryQuestion(event){
-
-    if(confirm("この問題を解き直しますか？")){
-
-        currentEvent=event;
-
-        document.getElementById("eventTitle").innerHTML=
-        currentEvent.title;
-
-        document.getElementById("storyText").innerHTML=
-        currentEvent.story;
-
-        document.getElementById("answer").value="";
-
-        document.getElementById("result").style.display="none";
-
-        document.getElementById("wrongList").style.display="none";
-
-        document.getElementById("event").style.display="block";
-
-    }
+    document.getElementById("wrongList").style.display =
+    "none";
 
 }
 
@@ -1276,14 +1309,12 @@ function checkAnswer(){
     }
 
 	if(correct){
-            wrongEvents =
-            wrongEvents.filter(
-                e => e !== currentEvent
-            );
+
+        wrongEvents =
+        wrongEvents.filter(e=>e!==currentEvent);
 
 	result.style.display = "block";
 	result.className = "correct";
-
 	result.innerHTML = currentEvent.success;
 
 	}else{
@@ -1294,13 +1325,12 @@ function checkAnswer(){
 	result.innerHTML = currentEvent.failure;
 
 	// 間違えた問題を保存
-    if(!wrongEvents.includes(currentEvent)){
+	if(!wrongEvents.includes(currentEvent)){
 
-        wrongEvents.push(currentEvent);
+            wrongEvents.push(currentEvent);
 
+        }
     }
-
-    retryEvent = currentEvent;
 
     // 3秒後にイベント終了
 setTimeout(function(){
@@ -1364,19 +1394,25 @@ document.getElementById("event").style.display =
 // 1分ごとに災害ピンを再配置
 setInterval(function(){
 
-    if(map && marker){
-
-        const center = marker.getLatLng();
-
-        createEventPins(center.lat, center.lng);
-
-    }
+    refreshEventPins();
 
 },3600000);
 
-}
+
 
 </script>
+
+<div id="wrongList">
+
+<h2>間違えた問題一覧</h2>
+
+<div id="wrongListContent"></div>
+
+<button onclick="closeWrongList()">
+閉じる
+</button>
+
+</div>
 
 </body>
 </html>
