@@ -436,10 +436,17 @@ function(error){
 */
 let map;
 let marker;
-let eventMarkers = []; // 災害イベントピン
-let dangerCircle; // 範囲表示
+let eventMarkers = [];
+let dangerCircle;
 
 let selectedEventMarker = null;
+
+// 最後に青ピンを配置した位置
+let lastPinLat = null;
+let lastPinLon = null;
+
+// 青ピンを更新する移動距離
+const PIN_UPDATE_DISTANCE = 100;
 
 navigator.geolocation.watchPosition(
 
@@ -500,7 +507,12 @@ function(position){
             }
         ).addTo(map);
 
+        // 青ピン生成
         createEventPins(lat, lon);
+
+        // 青ピン配置地点を記録
+        lastPinLat = lat;
+        lastPinLon = lon;
 
     }
     else{
@@ -508,8 +520,55 @@ function(position){
         // 現在地更新
         marker.setLatLng([lat, lon]);
 
-        // サークル更新
+        // 円形サークル更新
         dangerCircle.setLatLng([lat, lon]);
+
+
+        // =========================
+        // 青ピンを更新するか判定
+        // =========================
+
+        // 前回の青ピン位置がまだ記録されていない場合
+        if(
+            lastPinLat === null ||
+            lastPinLon === null
+        ){
+
+            // 青ピンを現在地周辺に生成
+            createEventPins(lat, lon);
+
+            // 現在地を記録
+            lastPinLat = lat;
+            lastPinLon = lon;
+
+        }
+        else{
+
+            // 前回青ピンを作った場所から
+            // 現在地までの距離を計算
+            const distance =
+                calculateDistance(
+                    lastPinLat,
+                    lastPinLon,
+                    lat,
+                    lon
+                );
+
+
+            // 100m以上移動していたら
+            if(distance >= PIN_UPDATE_DISTANCE){
+
+                // 古い青ピンを削除して
+                // 新しい場所に青ピンを生成
+                createEventPins(lat, lon);
+
+                // 新しい青ピンの基準位置を記録
+                lastPinLat = lat;
+                lastPinLon = lon;
+
+            }
+
+        }
 
     }
 
@@ -1159,57 +1218,152 @@ window.scrollTo({
 
 });
 
+function calculateDistance(lat1, lon1, lat2, lon2){
+
+    const R = 6371000;
+
+    const lat1Rad =
+        lat1 * Math.PI / 180;
+
+    const lat2Rad =
+        lat2 * Math.PI / 180;
+
+    const deltaLat =
+        (lat2 - lat1) * Math.PI / 180;
+
+    const deltaLon =
+        (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(deltaLat / 2) *
+        Math.sin(deltaLat / 2) +
+
+        Math.cos(lat1Rad) *
+        Math.cos(lat2Rad) *
+
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2);
+
+    const c =
+        2 * Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1 - a)
+        );
+
+    return R * c;
+
+}
+
 function createEventPins(lat, lon){
 
-    // 古いピン削除
-    eventMarkers.forEach(marker=>{
+    // =========================
+    // 古い青ピンをすべて削除
+    // =========================
+
+    eventMarkers.forEach(function(marker){
+
         map.removeLayer(marker);
+
     });
 
     eventMarkers = [];
 
-    // 3～10個のランダム数
+
+    // =========================
+    // 青ピンの数
+    // =========================
+
     const pinCount =
-    Math.floor(Math.random()*8)+3;
+        Math.floor(Math.random() * 8) + 3;
 
-    for(let i=0;i<pinCount;i++){
 
-        const radius = 0.008;
+    // =========================
+    // 円形サークルの半径
+    // 500m
+    // =========================
+
+    const radius = 500;
+
+
+    // =========================
+    // 青ピンを生成
+    // =========================
+
+    for(let i = 0; i < pinCount; i++){
+
+        // ランダムな角度
+        const angle =
+            Math.random() * Math.PI * 2;
+
+
+        // 中心からの距離
+        // 0～500m
+        const distance =
+            Math.sqrt(Math.random()) * radius;
+
+
+        // 緯度方向
+        const latOffset =
+            (distance * Math.cos(angle)) / 111320;
+
+
+        // 経度方向
+        const lonOffset =
+            (distance * Math.sin(angle)) /
+            (111320 * Math.cos(lat * Math.PI / 180));
+
 
         const randomLat =
-        lat + (Math.random()-0.5)*radius;
+            lat + latOffset;
 
         const randomLon =
-        lon + (Math.random()-0.5)*radius;
+            lon + lonOffset;
 
-        const marker = L.marker(
-            [randomLat, randomLon]
-        ).addTo(map);
 
-        marker.bindPopup(
+        // =========================
+        // 青ピン作成
+        // =========================
+
+        const eventMarker =
+            L.marker(
+                [randomLat, randomLon]
+            ).addTo(map);
+
+
+        eventMarker.bindPopup(
             "災害発生地点"
         );
 
-        marker.on("click",function(){
+
+        // =========================
+        // 青ピンをクリック
+        // =========================
+
+        eventMarker.on("click", function(){
 
             generateEvent();
 
             // クリックしたピンを保存
-            currentPin = marker;
+            currentPin = eventMarker;
+
 
             // イベント画面表示
             document.getElementById("event").style.display =
-            "block";
+                "block";
 
+
+            // イベント画面までスクロール
             document
-            .getElementById("event")
-            .scrollIntoView({
-                behavior:"smooth"
-            });
+                .getElementById("event")
+                .scrollIntoView({
+                    behavior:"smooth"
+                });
 
         });
 
-        eventMarkers.push(marker);
+
+        // 配列に保存
+        eventMarkers.push(eventMarker);
 
     }
 
