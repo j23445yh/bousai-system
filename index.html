@@ -36,9 +36,34 @@ header{
 
 #map{
     height:350px;
-    margin:15px;
+    margin:8px 15px 12px;
     border-radius:10px;
     overflow:hidden;
+}
+.map-controls{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    margin:0 15px 12px;
+}
+.map-controls button{
+    margin:0;
+    min-height:48px;
+    font-size:16px;
+}
+.map-controls .secondary{background:#526579;}
+.map-controls .active-mode{background:#2a7f62;}
+.map-help{
+    margin:0 15px 12px;
+    padding:10px 12px;
+    background:#fff;
+    border-radius:8px;
+    color:#344054;
+    font-size:14px;
+    line-height:1.6;
+}
+@media screen and (max-width:480px){
+    .map-controls{grid-template-columns:1fr;}
 }
 
 #event{
@@ -144,6 +169,15 @@ margin-top:10px;
 
 }
 
+
+/* 災害イベント別ウィンドウ */
+#eventOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;}
+#event{display:none;position:fixed !important;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:800px;max-height:85vh;overflow-y:auto;margin:0 !important;padding:25px;box-sizing:border-box;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35);z-index:10000;}
+#eventClose{position:absolute;top:10px;right:12px;width:auto;margin:0;padding:5px 12px;background:#6c757d;font-size:20px;line-height:1;}
+#eventCloseBottom{background:#6c757d;margin-top:15px;}
+#answerButton:disabled{opacity:.6;cursor:not-allowed;}
+@media screen and (max-width:768px){#event{width:94%;max-height:88vh;padding:20px;}}
+
 /* ---------- スマホ対応 ---------- */
 
 @media screen and (max-width:768px){
@@ -236,6 +270,47 @@ margin-top:10px;
 
 }
 
+
+/* 改良3：機能別タブとアクセシビリティ */
+*{box-sizing:border-box}
+body{font-size:16px;line-height:1.6}
+header{padding:16px 12px;font-size:clamp(20px,4vw,28px);overflow-wrap:anywhere}
+.main-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 15px;background:#dce6ef}
+.main-nav button{margin:0;min-height:48px;padding:10px 8px;background:#526579;font-size:16px}
+.main-nav button[aria-selected="true"]{background:#1d3557;outline:3px solid #8ecae6;outline-offset:1px}
+.tab-panel{max-width:1100px;margin:0 auto;padding:4px 0 24px;min-width:0}
+.tab-panel[hidden]{display:none!important}
+.content-card{background:#fff;margin:15px;padding:20px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.1);overflow-wrap:anywhere}
+.content-card h2{margin-top:0}
+.content-card p{line-height:1.8}
+.small-note{font-size:14px;color:#475467}
+button,textarea{font:inherit}
+button{min-height:48px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+button:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #f4a261;outline-offset:3px}
+textarea{max-width:100%;min-width:0}
+#gpsInfo{margin:15px}
+#map{width:calc(100% - 30px);height:clamp(260px,48vh,480px);margin:8px 15px 12px}
+#positionText{overflow-wrap:anywhere}
+.history-list{padding-left:24px}
+.history-list li{padding:8px 0;border-bottom:1px solid #e5e7eb}
+#wrongListContent button{margin:6px 0}
+#wrongList{max-height:80vh;overflow:auto;box-sizing:border-box}
+#event{max-width:800px;max-height:88vh;overflow-y:auto;overscroll-behavior:contain}
+#eventClose{position:sticky;float:right;top:0}
+@media(max-width:480px){
+  .main-nav{padding:8px;gap:6px}
+  .main-nav button{padding:8px 4px;font-size:14px}
+  .content-card{margin:10px;padding:15px}
+  #gpsInfo{margin:10px}
+  #map{width:calc(100% - 20px);margin:8px 10px;height:300px}
+  .map-controls{grid-template-columns:1fr}
+  #event{width:calc(100% - 20px);max-height:90vh;padding:16px}
+  #retryButton{position:static;width:100%;margin:8px 0 0}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+
 </style>
 <link
 rel="stylesheet"
@@ -252,22 +327,50 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 
 防災避難学習システム
 
-<button id="retryButton"
-onclick="showWrongList()">
-解きなおし
-</button>
+
 
 </header>
 
-<div id="gpsInfo">
-現在地取得中...
+<nav class="main-nav" role="tablist" aria-label="主な機能">
+  <button type="button" role="tab" id="tab-map" aria-controls="panel-map" aria-selected="true" tabindex="0" onclick="switchTab('map')">地図</button>
+  <button type="button" role="tab" id="tab-learning" aria-controls="panel-learning" aria-selected="false" tabindex="-1" onclick="switchTab('learning')">防災学習</button>
+  <button type="button" role="tab" id="tab-records" aria-controls="panel-records" aria-selected="false" tabindex="-1" onclick="switchTab('records')">学習記録</button>
+</nav>
+
+<main>
+<section id="panel-map" class="tab-panel" role="tabpanel" aria-labelledby="tab-map">
+
+<div id="gpsInfo" role="status" aria-live="polite">
+    <div id="gpsStatusTitle" style="font-weight:bold;font-size:17px;">現在地を取得しています</div>
+    <div id="gpsStatusDetail" style="margin-top:6px;">位置情報の許可を確認しています。取得できない場合も、地図は手動で操作できます。</div>
+    <div id="gpsLastUpdated" style="margin-top:6px;font-size:14px;color:#555;">最終取得時刻：まだ取得していません</div>
+    <div id="gpsAccuracy" style="margin-top:3px;font-size:14px;color:#555;">位置精度：未取得</div>
+    <button type="button" onclick="startLocationTracking()" style="margin-top:10px;">現在地の取得をもう一度試す</button>
 </div>
 
-<div id="map"></div>
+<div class="map-help">
+    <b>地図の使い方</b><br>
+    「自由に地図を見る」では地図を動かして周辺を確認できます。GPS追従をオンにすると、位置情報の更新に合わせて地図が現在地へ移動します。
+</div>
 
-<button onclick="moveCurrentLocation()">
-現在地へ戻る
-</button>
+<div class="map-controls" aria-label="地図操作">
+    <button id="followModeButton" type="button" class="secondary" onclick="toggleFollowMode()" aria-pressed="false">
+        GPS追従：オフ
+    </button>
+    <button type="button" onclick="moveCurrentLocation()">
+        現在地へ戻る
+    </button>
+    <button type="button" class="secondary" onclick="focusShelterSearch()">
+        避難所を探す
+    </button>
+    <button type="button" class="secondary" onclick="retryMapTiles()">
+        地図を再読み込み
+    </button>
+</div>
+<div id="map" role="application" aria-label="地図。ドラッグや拡大縮小で周辺を確認できます。"></div>
+<div id="shelterSearchInfo" class="map-help" style="display:none;" role="status" aria-live="polite">
+    避難所検索機能は、避難所データを登録した段階で利用できるようになります。現時点では地図を手動で動かして周辺を確認してください。災害時は自治体などの最新情報を確認してください。
+</div>
 
 <div id="positionText"
 style="
@@ -278,9 +381,34 @@ border-radius:10px;
 ">
 現在地取得中...
 </div>
+</section>
+
+<section id="panel-learning" class="tab-panel" role="tabpanel" aria-labelledby="tab-learning" hidden>
+  <div class="content-card">
+    <h2>防災学習</h2>
+    <p>災害時の状況を読み、あなたならどう行動するか考えて回答してください。地図上の青いマーカーを選ぶか、下のボタンから学習を始められます。</p>
+    <button type="button" id="startLearningButton" onclick="startRandomLearning()">ランダムな災害シナリオを始める</button>
+    <p class="small-note">回答後に解説が表示されます。判定は回答文に含まれるキーワードを使った簡易判定です。</p>
+  </div>
+</section>
+
+<section id="panel-records" class="tab-panel" role="tabpanel" aria-labelledby="tab-records" hidden>
+  <div class="content-card">
+    <h2>学習記録</h2>
+    <p id="recordSummary" role="status" aria-live="polite">回答した問題はまだありません。</p>
+    <h3>回答履歴</h3>
+    <ol id="learningHistory" class="history-list"></ol>
+    <h3>間違えた問題</h3>
+    <div id="learningWrongList"></div>
+    <button type="button" class="secondary" onclick="clearLearningHistory()">学習記録を消去</button>
+  </div>
+</section>
+</main>
+
+<div id="eventOverlay" onclick="closeEventWindow()"></div>
 
 <div id="event" style="display:none;">
-
+<button id="eventClose" onclick="closeEventWindow()" aria-label="閉じる">×</button>
 <h2 id="eventTitle">災害イベント</h2>
 
 <div class="story" id="storyText">
@@ -289,15 +417,20 @@ border-radius:10px;
 
 <br>
 
-<b>あなたならどのように行動しますか？</b>
+<label for="answer"><b>あなたならどのように行動しますか？</b></label>
 
 <textarea
-id="answer"
+id="answer" aria-describedby="answerHelp"
 placeholder="避難行動を自由に記述してください">
 </textarea>
+<p id="answerHelp" class="small-note">具体的な避難行動を文章で入力してください。</p>
 
-<button onclick="checkAnswer()">
+<button id="answerButton" onclick="checkAnswer()">
 回答する
+</button>
+
+<button id="eventCloseBottom" onclick="closeEventWindow()">
+イベントを閉じる
 </button>
 
 <button onclick="generateEvent()">
@@ -393,7 +526,11 @@ function(position){
 
         // サークル更新
         dangerCircle.setLatLng([lat, lon]);
-	
+
+	// 現在地の移動に合わせて
+        // 青ピンを整理・補充
+        createEventPins(lat, lon);
+
 	if(eventMarker){
 
     const center =
@@ -448,149 +585,218 @@ let lastPinLon = null;
 // 青ピンを更新する移動距離
 const PIN_UPDATE_DISTANCE = 100;
 
-navigator.geolocation.watchPosition(
 
-function(position){
+// ============================================================
+// 地図タイルの安定表示
+// ============================================================
+// CARTOは現在、外部アプリからのBasemap利用にAPIキーが必要です。
+// そのため、APIキー不要の公開Esri World Street Mapを使用します。
+let currentBaseLayer = null;
+let baseMapMode = "Esri";
 
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-
-    document.getElementById("gpsInfo").innerHTML =
-    "<b>現在地取得成功</b><br>" +
-    "緯度：" + lat.toFixed(5) +
-    "<br>経度：" + lon.toFixed(5);
-
-    document.getElementById("positionText").innerHTML =
-    "現在地<br>" +
-    lat.toFixed(5) +
-    "<br>" +
-    lon.toFixed(5);
-
-    // 初回のみ地図生成
-    if(!map){
-
-        map = L.map('map',{
-
-    zoomControl:true,
-    tap:true
-
-}).setView(
-            [lat, lon],
-            15
-        );
-
-        L.tileLayer(
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            {
-                attribution:
-                '&copy; OpenStreetMap contributors'
-            }
-        ).addTo(map);
-
-        marker = L.circleMarker(
-            [lat, lon],
-            {
-                radius:10,
-                color:"blue",
-                fillColor:"blue",
-                fillOpacity:0.8
-            }
-        ).addTo(map);
-
-        dangerCircle = L.circle(
-            [lat, lon],
-            {
-                radius:500,
-                color:"blue",
-                fillColor:"#66ccff",
-                fillOpacity:0.15
-            }
-        ).addTo(map);
-
-        // 青ピン生成
-        createEventPins(lat, lon);
-
-        // 青ピン配置地点を記録
-        lastPinLat = lat;
-        lastPinLon = lon;
-
-    }
-    else{
-
-        // 現在地更新
-        marker.setLatLng([lat, lon]);
-
-        // 円形サークル更新
-        dangerCircle.setLatLng([lat, lon]);
-
-
-        // =========================
-        // 青ピンを更新するか判定
-        // =========================
-
-        // 前回の青ピン位置がまだ記録されていない場合
-        if(
-            lastPinLat === null ||
-            lastPinLon === null
-        ){
-
-            // 青ピンを現在地周辺に生成
-            createEventPins(lat, lon);
-
-            // 現在地を記録
-            lastPinLat = lat;
-            lastPinLon = lon;
-
-        }
-        else{
-
-            // 前回青ピンを作った場所から
-            // 現在地までの距離を計算
-            const distance =
-                calculateDistance(
-                    lastPinLat,
-                    lastPinLon,
-                    lat,
-                    lon
-                );
-
-
-            // 100m以上移動していたら
-            if(distance >= PIN_UPDATE_DISTANCE){
-
-                // 古い青ピンを削除して
-                // 新しい場所に青ピンを生成
-                createEventPins(lat, lon);
-
-                // 新しい青ピンの基準位置を記録
-                lastPinLat = lat;
-                lastPinLon = lon;
-
-            }
-
-        }
-
-    }
-
-    // 地図中心も移動
-    map.setView([lat, lon]);
-
-},
-
-function(error){
-
-    document.getElementById("gpsInfo").innerHTML =
-    "GPS取得に失敗しました";
-
-},
-
-{
-    enableHighAccuracy:true,
-    maximumAge:1000,
-    timeout:10000
+function setMapStatus(message){
+    const el = document.getElementById("gpsStatusDetail");
+    if(!el) return;
+    el.textContent = message;
 }
 
-);
+function createEsriLayer(){
+    return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        {
+            attribution:'&copy; Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, METI/NASA, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community',
+            maxZoom:19,
+            updateWhenIdle:true,
+            keepBuffer:2
+        }
+    );
+}
+
+function addReliableBaseMap(mapInstance){
+    // APIキーが必要なCARTOは使用せず、EsriのWorld Street Mapを使用。
+    currentBaseLayer = createEsriLayer();
+    baseMapMode = "Esri";
+    currentBaseLayer.addTo(mapInstance);
+
+    let tileErrors = 0;
+    currentBaseLayer.on('tileerror', function(){
+        tileErrors++;
+        if(tileErrors === 1){
+            setMapStatus("地図タイルの取得に失敗しました。通信環境を確認してください。");
+        }
+        if(tileErrors >= 3){
+            setMapStatus("地図タイルを取得できません。再読み込みボタンを押してください。");
+        }
+    });
+
+    setTimeout(function(){
+        mapInstance.invalidateSize(true);
+    }, 300);
+}
+
+function retryMapTiles(){
+    if(!map) return;
+
+    if(currentBaseLayer){
+        map.removeLayer(currentBaseLayer);
+    }
+
+    addReliableBaseMap(map);
+    map.invalidateSize(true);
+}
+
+// GPS状態の管理
+let watchId = null;
+let lastPositionTime = null;
+let lastPositionAccuracy = null;
+let hasReceivedPosition = false;
+let gpsStaleTimer = null;
+let userMovedMap = false;
+let followGpsMode = false;
+
+// GPSが使えない場合でも、地図を表示して手動操作できるようにする。
+// 初期表示位置は佐倉市周辺。地図は自由にドラッグ・拡大縮小できます。
+function initializeManualMap(){
+    if(map) return;
+    map = L.map('map', { zoomControl:true, tap:true }).setView([35.723, 140.223], 13);
+    addReliableBaseMap(map);
+    map.on('dragstart zoomstart', function(){ userMovedMap = true; });
+    document.getElementById('positionText').textContent =
+        '現在地は未取得です。地図をドラッグ・拡大縮小して手動で確認できます。';
+}
+
+function setGpsStatus(title, detail){
+    const titleEl = document.getElementById('gpsStatusTitle');
+    const detailEl = document.getElementById('gpsStatusDetail');
+    if(titleEl) titleEl.textContent = title;
+    if(detailEl) detailEl.textContent = detail;
+}
+
+function formatLocalTime(date){
+    return date.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+function updateLastPositionDetails(position){
+    lastPositionTime = new Date();
+    lastPositionAccuracy = position.coords.accuracy;
+    document.getElementById('gpsLastUpdated').textContent =
+        '最終取得時刻：' + formatLocalTime(lastPositionTime);
+    let accuracyText = '位置精度：約' + Math.round(lastPositionAccuracy) + ' m';
+    if(lastPositionAccuracy <= 20){
+        accuracyText += '（比較的良好）';
+    }else if(lastPositionAccuracy <= 100){
+        accuracyText += '（目安として確認してください）';
+    }else{
+        accuracyText += '（誤差が大きい可能性があります）';
+    }
+    document.getElementById('gpsAccuracy').textContent = accuracyText;
+}
+
+function markLocationStaleIfNeeded(){
+    if(!lastPositionTime) return;
+    const elapsed = Date.now() - lastPositionTime.getTime();
+    if(elapsed >= 120000){
+        setGpsStatus('位置情報が古くなっています', '2分以上、新しい位置情報を取得できていません。移動している場合は「現在地の取得を再試行」を押してください。');
+    }
+}
+
+function handleLocationSuccess(position){
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const isFirstFix = !hasReceivedPosition;
+    hasReceivedPosition = true;
+    updateLastPositionDetails(position);
+    setGpsStatus('現在地を取得しました', '青い丸が現在地の目安です。位置精度には誤差があるため、周囲の状況も確認してください。');
+
+    document.getElementById('positionText').innerHTML =
+        '<b>現在地（取得した位置）</b><br>緯度：' + lat.toFixed(5) +
+        '<br>経度：' + lon.toFixed(5) +
+        '<br>位置精度：約' + Math.round(position.coords.accuracy) + ' m';
+
+    if(!map){
+        map = L.map('map', { zoomControl:true, tap:true }).setView([lat, lon], 15);
+        addReliableBaseMap(map);
+        map.on('dragstart zoomstart', function(){ userMovedMap = true; });
+        marker = L.circleMarker([lat, lon], {
+            radius:10, color:'blue', fillColor:'blue', fillOpacity:0.8
+        }).addTo(map);
+        dangerCircle = L.circle([lat, lon], {
+            radius:500, color:'blue', fillColor:'#66ccff', fillOpacity:0.15
+        }).addTo(map);
+        createEventPins(lat, lon);
+        lastPinLat = lat;
+        lastPinLon = lon;
+    }else{
+        if(!marker){
+            marker = L.circleMarker([lat, lon], {
+                radius:10, color:'blue', fillColor:'blue', fillOpacity:0.8
+            }).addTo(map);
+            dangerCircle = L.circle([lat, lon], {
+                radius:500, color:'blue', fillColor:'#66ccff', fillOpacity:0.15
+            }).addTo(map);
+            createEventPins(lat, lon);
+            lastPinLat = lat;
+            lastPinLon = lon;
+        }else{
+            marker.setLatLng([lat, lon]);
+            dangerCircle.setLatLng([lat, lon]);
+            if(lastPinLat === null || lastPinLon === null ||
+               calculateDistance(lastPinLat, lastPinLon, lat, lon) >= PIN_UPDATE_DISTANCE){
+                createEventPins(lat, lon);
+                lastPinLat = lat;
+                lastPinLon = lon;
+            }
+        }
+    }
+
+    // 初回の位置取得では一度だけ現在地を表示。
+    // 2回目以降は、GPS追従モードがオンのときだけ地図中心を更新する。
+    if(isFirstFix){
+        map.setView([lat, lon], 15);
+    }else if(followGpsMode){
+        map.setView([lat, lon], Math.max(map.getZoom(), 15));
+    }
+}
+
+function handleLocationError(error){
+    let detail = '位置情報が取得できません。ブラウザーや端末の位置情報設定、通信環境を確認してください。地図は手動で操作できます。';
+    if(error && error.code === 1){
+        setGpsStatus('位置情報が取得できません。設定を確認してください', '位置情報の利用が許可されていません。ブラウザーのサイト設定や端末の位置情報設定を確認してください。地図は手動で確認できます。');
+    }else if(error && error.code === 2){
+        setGpsStatus('現在地を取得できません', detail);
+    }else if(error && error.code === 3){
+        setGpsStatus('現在地の取得がタイムアウトしました', 'GPSの受信や通信に時間がかかっています。屋外などで再試行してください。地図は手動で操作できます。');
+    }else{
+        setGpsStatus('位置情報が取得できません。設定を確認してください', detail);
+    }
+    document.getElementById('positionText').textContent =
+        '現在地は未取得です。地図をドラッグ・拡大縮小して手動で確認できます。';
+    initializeManualMap();
+}
+
+function startLocationTracking(){
+    if(watchId !== null && navigator.geolocation){
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    if(!navigator.geolocation){
+        handleLocationError({code:0});
+        return;
+    }
+    setGpsStatus('現在地を取得しています', '端末から位置情報を取得しています。取得できない場合も、地図は手動で操作できます。');
+    if(!map) initializeManualMap();
+    watchId = navigator.geolocation.watchPosition(
+        handleLocationSuccess,
+        handleLocationError,
+        { enableHighAccuracy:true, maximumAge:10000, timeout:15000 }
+    );
+}
+
+// ページを開いたらGPS取得を開始。許可されていなくても地図は利用可能。
+initializeManualMap();
+updateFollowModeButton();
+startLocationTracking();
+gpsStaleTimer = setInterval(markLocationStaleIfNeeded, 15000);
 
 
 // ランダムイベント
@@ -1188,6 +1394,81 @@ let currentEvent;
 let currentPin = null;
 // 解きなおし用に間違えた問題を保存
 let wrongEvents = [];
+let learningHistory = [];
+
+function switchTab(name){
+    const names = ['map','learning','records'];
+    names.forEach(function(tabName){
+        const tab = document.getElementById('tab-' + tabName);
+        const panel = document.getElementById('panel-' + tabName);
+        const selected = tabName === name;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        panel.hidden = !selected;
+    });
+    if(name === 'map' && map){
+        setTimeout(function(){ map.invalidateSize(true); }, 50);
+    }
+    const selectedTab = document.getElementById('tab-' + name);
+    if(selectedTab) selectedTab.focus();
+}
+
+document.querySelectorAll('[role="tab"]').forEach(function(tab){
+    tab.addEventListener('keydown', function(event){
+        const names = ['map','learning','records'];
+        const current = names.indexOf(tab.id.replace('tab-',''));
+        let next = current;
+        if(event.key === 'ArrowRight') next = (current + 1) % names.length;
+        else if(event.key === 'ArrowLeft') next = (current + names.length - 1) % names.length;
+        else if(event.key === 'Home') next = 0;
+        else if(event.key === 'End') next = names.length - 1;
+        else return;
+        event.preventDefault();
+        switchTab(names[next]);
+    });
+});
+
+function startRandomLearning(){
+    generateEvent();
+    switchTab('learning');
+    openEventWindow();
+}
+
+function renderLearningRecords(){
+    const summary = document.getElementById('recordSummary');
+    const history = document.getElementById('learningHistory');
+    const wrong = document.getElementById('learningWrongList');
+    if(summary) summary.textContent = learningHistory.length
+      ? '回答数：' + learningHistory.length + '件／正解：' + learningHistory.filter(x => x.correct).length + '件'
+      : '回答した問題はまだありません。';
+    if(history){
+      history.textContent = '';
+      learningHistory.slice().reverse().forEach(function(item){
+        const li = document.createElement('li');
+        li.textContent = item.title + ' — ' + (item.correct ? '正解' : '要復習') + '（' + item.time + '）';
+        history.appendChild(li);
+      });
+    }
+    if(wrong){
+      wrong.textContent = '';
+      if(!wrongEvents.length){
+        wrong.textContent = '間違えた問題はありません。';
+      } else {
+        wrongEvents.forEach(function(item){
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = item.title + 'を解きなおす';
+          button.addEventListener('click', function(){ retryWrongEvent(wrongEvents.indexOf(item)); });
+          wrong.appendChild(button);
+        });
+      }
+    }
+}
+
+function clearLearningHistory(){
+    learningHistory = [];
+    renderLearningRecords();
+}
 
 // イベント生成
 
@@ -1256,62 +1537,61 @@ function calculateDistance(lat1, lon1, lat2, lon2){
 
 function createEventPins(lat, lon){
 
-    // =========================
-    // 古い青ピンをすべて削除
-    // =========================
+    // 青ピンを配置する最大数
+    const targetPinCount = 8;
 
-    eventMarkers.forEach(function(marker){
+    // 円形サークルの半径
+    const radius = 500;
 
-        map.removeLayer(marker);
+    // -----------------------------
+    // ① 円の外に出たピンだけ削除
+    // -----------------------------
+
+    eventMarkers = eventMarkers.filter(function(pin){
+
+        const pinPos = pin.getLatLng();
+
+        const distance =
+            map.distance(
+                [lat, lon],
+                [pinPos.lat, pinPos.lng]
+            );
+
+        // 円の外に出た場合
+        if(distance > radius){
+
+            map.removeLayer(pin);
+
+            return false;
+        }
+
+        return true;
 
     });
 
-    eventMarkers = [];
 
+    // -----------------------------
+    // ② 足りないピンだけ追加
+    // -----------------------------
 
-    // =========================
-    // 青ピンの数
-    // =========================
+    while(eventMarkers.length < targetPinCount){
 
-    const pinCount =
-        Math.floor(Math.random() * 8) + 3;
-
-
-    // =========================
-    // 円形サークルの半径
-    // 500m
-    // =========================
-
-    const radius = 500;
-
-
-    // =========================
-    // 青ピンを生成
-    // =========================
-
-    for(let i = 0; i < pinCount; i++){
-
-        // ランダムな角度
+        // 円の「端付近」に配置する
         const angle =
             Math.random() * Math.PI * 2;
 
-
-        // 中心からの距離
-        // 0～500m
+        // 円の外側寄りに配置
         const distance =
-            Math.sqrt(Math.random()) * radius;
-
+            radius * (0.85 + Math.random() * 0.15);
 
         // 緯度方向
         const latOffset =
-            (distance * Math.cos(angle)) / 111320;
-
+            (distance / 111000) * Math.cos(angle);
 
         // 経度方向
         const lonOffset =
-            (distance * Math.sin(angle)) /
-            (111320 * Math.cos(lat * Math.PI / 180));
-
+            (distance / (111000 * Math.cos(lat * Math.PI / 180)))
+            * Math.sin(angle);
 
         const randomLat =
             lat + latOffset;
@@ -1320,10 +1600,7 @@ function createEventPins(lat, lon){
             lon + lonOffset;
 
 
-        // =========================
         // 青ピン作成
-        // =========================
-
         const eventMarker =
             L.marker(
                 [randomLat, randomLon]
@@ -1335,10 +1612,7 @@ function createEventPins(lat, lon){
         );
 
 
-        // =========================
-        // 青ピンをクリック
-        // =========================
-
+        // ピンをクリックしたとき
         eventMarker.on("click", function(){
 
             generateEvent();
@@ -1346,18 +1620,8 @@ function createEventPins(lat, lon){
             // クリックしたピンを保存
             currentPin = eventMarker;
 
-
-            // イベント画面表示
-            document.getElementById("event").style.display =
-                "block";
-
-
-            // イベント画面までスクロール
-            document
-                .getElementById("event")
-                .scrollIntoView({
-                    behavior:"smooth"
-                });
+            // 災害イベントを別ウィンドウで表示
+            openEventWindow();
 
         });
 
@@ -1368,6 +1632,38 @@ function createEventPins(lat, lon){
     }
 
 }
+
+let lastFocusedElement = null;
+function openEventWindow(){
+    lastFocusedElement = document.activeElement;
+    document.getElementById("event").setAttribute("role","dialog");
+    document.getElementById("event").setAttribute("aria-modal","true");
+    document.getElementById("event").setAttribute("aria-labelledby","eventTitle");
+    document.getElementById("eventOverlay").style.display="block";
+    document.getElementById("answerButton").disabled=false;
+    document.getElementById("event").style.display="block";
+    document.body.style.overflow="hidden";
+    document.getElementById("eventClose").focus();
+}
+
+function closeEventWindow(){
+    document.getElementById("event").style.display="none";
+    document.getElementById("eventOverlay").style.display="none";
+    document.body.style.overflow="";
+    if(lastFocusedElement && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
+}
+
+document.addEventListener("keydown",function(e){
+    if(e.key==="Escape") closeEventWindow();
+    const dialog = document.getElementById("event");
+    if(dialog.style.display === "block" && e.key === "Tab"){
+        const focusable = dialog.querySelectorAll('button:not([disabled]), textarea, input, select, [href], [tabindex]:not([tabindex="-1"])');
+        if(!focusable.length) return;
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+});
 
 function retryWrongEvent(index){
 
@@ -1382,8 +1678,9 @@ function retryWrongEvent(index){
     document.getElementById("answer").value="";
 
     document.getElementById("result").style.display="none";
+    document.getElementById("answerButton").disabled=false;
 
-    document.getElementById("event").style.display="block";
+    openEventWindow();
 
     closeWrongList();
 
@@ -1393,7 +1690,7 @@ function retryWrongEvent(index){
 function showWrongList(){
 
     const list =
-    document.getElementById("wrongListContent");
+    document.getElementById("wrongListContentModal");
 
     list.innerHTML = "";
 
@@ -1430,129 +1727,113 @@ function closeWrongList(){
 }
 
 //★★★★ここに追加★★★★
-function moveCurrentLocation(){
+function updateFollowModeButton(){
+    const button = document.getElementById('followModeButton');
+    if(!button) return;
+    button.textContent = followGpsMode ? 'GPS追従：オン' : 'GPS追従：オフ';
+    button.classList.toggle('active-mode', followGpsMode);
+    button.classList.toggle('secondary', !followGpsMode);
+    button.setAttribute('aria-pressed', String(followGpsMode));
+}
 
-    if(marker){
-
-        const pos = marker.getLatLng();
-
-        map.setView(pos,16);
-
+function toggleFollowMode(){
+    followGpsMode = !followGpsMode;
+    updateFollowModeButton();
+    if(followGpsMode){
+        if(marker && map){
+            const pos = marker.getLatLng();
+            map.setView(pos, Math.max(map.getZoom(), 15));
+            setGpsStatus('GPS追従モード：オン', '位置情報が更新されると地図の中心も現在地へ移動します。周辺施設を自由に確認したい場合はGPS追従をオフにしてください。');
+        }else{
+            setGpsStatus('GPS追従モード：オン', '現在地はまだ取得できていません。位置情報を取得すると地図が追従します。');
+        }
+    }else{
+        setGpsStatus('自由に地図を見るモード', 'GPS位置は更新されますが、地図の中心は自動で移動しません。');
     }
+}
 
+function moveCurrentLocation(){
+    if(marker && map){
+        const pos = marker.getLatLng();
+        map.setView(pos, 16);
+        userMovedMap = false;
+        setGpsStatus('現在地を表示しています', followGpsMode
+            ? '現在地を中心にしました。GPS追従モードはオンのため、位置情報の更新に合わせて地図も移動します。'
+            : '現在地を一度だけ中心にしました。GPS追従はオフのため、以降は地図を自由に動かせます。');
+    }else{
+        setGpsStatus('現在地は未取得です', '現在地を中心に表示するにはGPS取得が必要です。地図は手動で操作できます。必要に応じて「現在地の取得を再試行」を押してください。');
+        if(map) map.setView([35.723, 140.223], 13);
+    }
+}
+
+function focusShelterSearch(){
+    const info = document.getElementById('shelterSearchInfo');
+    if(info){
+        info.style.display = 'block';
+        info.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
 }
 
 // 判定
 
+// 判定
 function checkAnswer(){
 
-    const answer =
-    document.getElementById("answer").value;
+    const answer = document.getElementById("answer").value;
+    const result = document.getElementById("result");
+    const answerButton = document.getElementById("answerButton");
 
-    const result =
-    document.getElementById("result");
+    if(answer.trim()===""){
+        alert("避難行動を入力してください。");
+        return;
+    }
 
     let correct = false;
 
     for(let keyword of currentEvent.keywords){
-
         if(answer.includes(keyword)){
             correct = true;
             break;
         }
     }
 
-	if(correct){
+    if(correct){
+        // 正解した問題は「間違えた問題」から削除
+        wrongEvents = wrongEvents.filter(e => e !== currentEvent);
+        result.style.display = "block";
+        result.className = "correct";
+        result.innerHTML = currentEvent.success;
+    }else{
+        result.style.display = "block";
+        result.className = "incorrect";
+        result.innerHTML = currentEvent.failure;
 
-        wrongEvents =
-        wrongEvents.filter(e=>e!==currentEvent);
-
-	result.style.display = "block";
-	result.className = "correct";
-	result.innerHTML = currentEvent.success;
-
-	}else{
-
-	result.style.display = "block";
-	result.className = "incorrect";
-
-	result.innerHTML = currentEvent.failure;
-
-	// 間違えた問題を保存
-	if(!wrongEvents.includes(currentEvent)){
-
+        // 間違えた問題を保存
+        if(!wrongEvents.includes(currentEvent)){
             wrongEvents.push(currentEvent);
-
         }
     }
 
-    // 3秒後にイベント終了
-setTimeout(function(){
+    learningHistory.push({
+        title: currentEvent.title,
+        correct: correct,
+        time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})
+    });
+    renderLearningRecords();
 
-    // イベント画面を閉じる
-    document.getElementById("event").style.display =
-    "none";
+    // 回答後もイベントウィンドウは自動で閉じない
+    // ストーリーと結果を確認できるよう、そのまま表示する
+    answerButton.disabled = true;
 
-    // 結果を消す
-    result.style.display = "none";
-
-    // 回答欄初期化
-    document.getElementById("answer").value = "";
-
-    // クリックしたピンを削除
+    // 回答済みの青ピンだけを削除する
+    // イベントウィンドウはユーザーが任意に閉じる
     if(currentPin){
-
         map.removeLayer(currentPin);
-
-        eventMarkers =
-        eventMarkers.filter(
-            m => m !== currentPin
-        );
-
+        eventMarkers = eventMarkers.filter(m => m !== currentPin);
         currentPin = null;
     }
 
-},3000);
-
-    }
-
-if(map && marker){
-
-    const center =
-    marker.getLatLng();
-
-    createEventPins(
-        center.lat,
-        center.lng
-    );
-
-// 回答済みイベントを削除
-if(selectedEventMarker){
-
-    map.removeLayer(selectedEventMarker);
-
-    eventMarkers =
-    eventMarkers.filter(
-        m => m !== selectedEventMarker
-    );
-
-    selectedEventMarker = null;
 }
-
-// イベント画面を閉じる
-document.getElementById("event").style.display =
-"none";
-
-}
-
-// 1分ごとに災害ピンを再配置
-setInterval(function(){
-
-    refreshEventPins();
-
-},3600000);
-
-
 
 </script>
 
@@ -1560,7 +1841,7 @@ setInterval(function(){
 
 <h2>間違えた問題一覧</h2>
 
-<div id="wrongListContent"></div>
+<div id="wrongListContentModal"></div>
 
 <button onclick="closeWrongList()">
 閉じる
