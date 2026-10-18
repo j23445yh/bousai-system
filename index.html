@@ -176,6 +176,16 @@ margin-top:10px;
 #eventClose{position:absolute;top:10px;right:12px;width:auto;margin:0;padding:5px 12px;background:#6c757d;font-size:20px;line-height:1;}
 #eventCloseBottom{background:#6c757d;margin-top:15px;}
 #answerButton:disabled{opacity:.6;cursor:not-allowed;}
+.answer-choice-area{margin-top:18px;padding:15px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc}
+.choice-option{display:flex;align-items:flex-start;gap:10px;padding:12px;margin:8px 0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;cursor:pointer}
+.choice-option input{margin-top:5px;flex:0 0 auto}
+.choice-option:focus-within{outline:3px solid #f4a261;outline-offset:2px}
+.branch-button{background:#2a7f62;margin-top:8px}.branch-outcome{margin-top:14px;padding:14px;border-radius:8px;background:#eef6ff;border:1px solid #b6d4fe;line-height:1.8}
+#result{line-height:1.7}
+#result h3{margin-top:0}
+#result ul{padding-left:24px}
+#result .feedback-section{margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,.15)}
+@media(max-width:480px){.answer-choice-area{padding:12px}.choice-option{padding:10px}}
 @media screen and (max-width:768px){#event{width:94%;max-height:88vh;padding:20px;}}
 
 /* ---------- スマホ対応 ---------- */
@@ -271,6 +281,14 @@ margin-top:10px;
 }
 
 
+/* 改良7：回答モードをいつでも切り替え */
+.answer-mode-switch{margin:16px 0;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc}
+.answer-mode-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.answer-mode-buttons button{margin:0;background:#526579}
+.answer-mode-buttons button[aria-pressed="true"]{background:#1d3557;outline:3px solid #8ecae6;outline-offset:1px}
+.answer-mode-panel[hidden]{display:none!important}
+@media(max-width:480px){.answer-mode-buttons{grid-template-columns:1fr}}
+
 /* 改良3：機能別タブとアクセシビリティ */
 *{box-sizing:border-box}
 body{font-size:16px;line-height:1.6}
@@ -293,6 +311,13 @@ textarea{max-width:100%;min-width:0}
 #positionText{overflow-wrap:anywhere}
 .history-list{padding-left:24px}
 .history-list li{padding:8px 0;border-bottom:1px solid #e5e7eb}
+.record-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.record-stat{padding:14px;background:#f0f5f9;border-radius:10px;border:1px solid #d8e2eb}
+.record-stat strong{display:block;font-size:24px;color:#1d3557}
+.category-rate{margin:10px 0;padding:12px;border:1px solid #e2e8f0;border-radius:8px}
+.category-rate progress{width:100%;height:14px}
+.answer-history-detail{margin:8px 0 14px;padding:10px;background:#f8fafc;border-left:4px solid #78909c;white-space:pre-wrap;overflow-wrap:anywhere}
+.review-primary{background:#2a7f62!important}
 #wrongListContent button{margin:6px 0}
 #wrongList{max-height:80vh;overflow:auto;box-sizing:border-box}
 #event{max-width:800px;max-height:88vh;overflow-y:auto;overscroll-behavior:contain}
@@ -311,6 +336,21 @@ textarea{max-width:100%;min-width:0}
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
 
+@media screen and (max-width:600px){
+  header{padding:58px 12px 18px;font-size:23px;}
+  #hiraganaToggle{right:10px;top:8px;font-size:14px;padding:8px 10px;}
+}
+.player-panel{padding:14px;margin:14px 0;background:#f8fafc;border:1px solid #d8e2eb;border-radius:10px}
+#leaderboard li{padding:10px;border-bottom:1px solid #e5e7eb}
+#leaderboard li:first-child{font-weight:bold;background:#fff8dc;border-radius:8px}
+body.hiragana-mode{font-family:"UD Digi Kyokasho NK-R","Yu Gothic",sans-serif;line-height:1.8;}
+body.hiragana-mode button,body.hiragana-mode .story,body.hiragana-mode p{line-height:1.8;}
+#authPanel[hidden]{display:none!important;}
+#accountControls{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:10px 15px;background:#dce6ef}
+#accountControls button{width:auto;margin:0;padding:10px 18px;font-size:15px}
+#authPanel{display:block}
+#sessionBar{display:block!important}
+@media(max-width:480px){#accountControls{justify-content:center}#accountControls button{flex:1}}
 </style>
 <link
 rel="stylesheet"
@@ -329,7 +369,36 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 
 
 
+<button type="button" id="hiraganaToggle" aria-pressed="false" onclick="toggleHiraganaMode()" style="position:absolute;right:12px;top:12px;width:auto;margin:0;padding:10px 14px;font-size:15px;background:#f4a261;color:#17202a;border:2px solid #fff;">ひらがなで よむ</button>
 </header>
+<nav id="accountControls" aria-label="アカウント操作">
+  <button type="button" onclick="openAuthPanel('login')" style="background:#2a7f62;">ログイン</button>
+  <button type="button" onclick="openAuthPanel('register')">新規登録</button>
+  <button type="button" id="guestStatusButton" onclick="showGuestStatus()" style="background:#526579;">ゲストでプレイ中</button>
+</nav>
+
+<section id="authPanel" hidden class="content-card" style="max-width:650px;margin:20px auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><h2>プレイヤー登録・ログイン</h2><button type="button" onclick="closeAuthPanel()" style="width:auto;margin:0;padding:8px 12px;background:#6c757d;">閉じる</button></div>
+  <p>アカウントなしでもゲストとして学習できます。ログイン・新規登録をすると、あなた専用のスコアをランキングに記録できます。</p>
+  <p class="small-note">※この試作版ではアカウントとランキングは、この端末・ブラウザー内に保存されます。別の端末との共有や本番向けの安全な認証にはサーバーが必要です。</p>
+  <form id="authForm" onsubmit="return false;">
+    <label for="authPlayerName">プレイヤー名</label>
+    <input id="authPlayerName" autocomplete="nickname" maxlength="20" placeholder="表示するプレイヤー名" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+    <label for="authEmail">メールアドレス</label>
+    <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+    <label for="authPassword">パスワード</label>
+    <input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="8文字以上" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+      <button type="button" onclick="registerAccount()">新規登録</button>
+      <button type="button" onclick="loginAccount()" style="background:#2a7f62;">ログイン</button>
+    </div>
+  </form>
+  <p id="authMessage" role="status" aria-live="polite"></p>
+</section>
+<div id="sessionBar" class="content-card" style="max-width:1100px;">
+  <span id="sessionInfo"></span>
+  <button type="button" onclick="logoutAccount()" style="background:#6c757d;">ログアウト</button>
+</div>
 
 <nav class="main-nav" role="tablist" aria-label="主な機能">
   <button type="button" role="tab" id="tab-map" aria-controls="panel-map" aria-selected="true" tabindex="0" onclick="switchTab('map')">地図</button>
@@ -388,14 +457,33 @@ border-radius:10px;
     <h2>防災学習</h2>
     <p>災害時の状況を読み、あなたならどう行動するか考えて回答してください。地図上の青いマーカーを選ぶか、下のボタンから学習を始められます。</p>
     <button type="button" id="startLearningButton" onclick="startRandomLearning()">ランダムな災害シナリオを始める</button>
-    <p class="small-note">回答後に解説が表示されます。判定は回答文に含まれるキーワードを使った簡易判定です。</p>
+    <p class="small-note">選択肢を選んで物語を進めることができます。自由記述も併用でき、回答後には判定と解説が表示されます。</p>
   </div>
 </section>
 
 <section id="panel-records" class="tab-panel" role="tabpanel" aria-labelledby="tab-records" hidden>
   <div class="content-card">
-    <h2>学習記録</h2>
+    <h2>学習記録・ランキング</h2>
+    <section class="player-panel" aria-labelledby="playerHeading">
+      <h3 id="playerHeading">ログイン中のプレイヤー</h3>
+      <p id="currentPlayerInfo" role="status" aria-live="polite">ログインしていません。</p>
+      <div class="record-stats">
+        <div class="record-stat"><span>あなたのスコア</span><strong id="playerScore">0点</strong></div>
+        <div class="record-stat"><span>あなたの順位</span><strong id="playerRank">--</strong></div>
+      </div>
+    </section>
+    <section aria-labelledby="rankingHeading">
+      <h3 id="rankingHeading">🏆 スコアランキング</h3>
+      <p class="small-note">正解で10点、不正解でも挑戦点として2点を獲得します。同点の場合は回答数が多い人を上位に表示します。</p>
+      <ol id="leaderboard" class="history-list"></ol>
+      <button type="button" class="secondary" onclick="resetLeaderboard()">ランキング記録を消去</button>
+    </section>
     <p id="recordSummary" role="status" aria-live="polite">回答した問題はまだありません。</p>
+    <div id="recordStats" class="record-stats" aria-label="学習成績"></div>
+    <h3>災害の種類別の正答率</h3>
+    <div id="categoryAccuracy"></div>
+    <button type="button" id="weakReviewButton" class="review-primary" onclick="startWeakReview()">苦手な問題を優先して復習する</button>
+    <p class="small-note">不正解が多い問題を優先して出題します。同じ問題に複数回回答した場合も記録されます。</p>
     <h3>回答履歴</h3>
     <ol id="learningHistory" class="history-list"></ol>
     <h3>間違えた問題</h3>
@@ -415,18 +503,31 @@ border-radius:10px;
 イベント読み込み中...
 </div>
 
-<br>
+<section class="answer-mode-switch" aria-labelledby="answerModeHeading">
+  <h3 id="answerModeHeading">回答モード</h3>
+  <p class="small-note">学習中でもいつでも切り替えられます。入力内容や選択内容は、切り替えても保持されます。</p>
+  <div class="answer-mode-buttons" role="group" aria-label="回答モードの選択">
+    <button type="button" id="modeChoiceButton" aria-pressed="true" onclick="setAnswerMode('choice')">選択式モード</button>
+    <button type="button" id="modeTextButton" aria-pressed="false" onclick="setAnswerMode('text')">自由記述モード</button>
+  </div>
+</section>
 
-<label for="answer"><b>あなたならどのように行動しますか？</b></label>
+<section id="choiceArea" class="answer-choice-area answer-mode-panel" aria-labelledby="choiceHeading">
+  <h3 id="choiceHeading">選択式で回答する</h3>
+  <p class="small-note">状況に合う行動を1つ選んでください。選択式モードでは、この選択内容を使って判定します。</p>
+  <div id="choiceOptions"></div>
+  <p class="small-note">選択した行動によって物語の展開が変わります。「回答して物語を進める」を押すと、物語が進み、選択内容の判定も表示されます。</p>
+  <div id="branchOutcome" class="branch-outcome" hidden aria-live="polite"></div>
+</section>
 
-<textarea
-id="answer" aria-describedby="answerHelp"
-placeholder="避難行動を自由に記述してください">
-</textarea>
-<p id="answerHelp" class="small-note">具体的な避難行動を文章で入力してください。</p>
+<section id="textAnswerArea" class="answer-mode-panel" hidden aria-labelledby="textAnswerHeading">
+  <label for="answer"><b id="textAnswerHeading">あなたならどのように行動しますか？（自由記述）</b></label>
+  <textarea id="answer" aria-describedby="answerHelp" placeholder="避難行動を自由に記述してください"></textarea>
+  <p id="answerHelp" class="small-note">具体的な避難行動を文章で入力してください。自由記述モードでは、文章の内容を使って判定します。</p>
+</section>
 
-<button id="answerButton" onclick="checkAnswer()">
-回答する
+<button id="answerButton" onclick="submitAnswerAndAdvanceStory()">
+回答して物語を進める
 </button>
 
 <button id="eventCloseBottom" onclick="closeEventWindow()">
@@ -1390,11 +1491,345 @@ failure:`
 
 ];
 
+// 改良4：問題ごとの評価観点・選択肢・模範回答を整理
+const eventLearningGuide = {
+  "津波警報": {
+    criteria: [
+      {label:"川・橋・海岸から離れる", keywords:["橋を渡らない","橋に近づかない","川に近づかない","川から離れる","海から離れる","海岸から離れる","川や橋を避ける","水辺から離れる"]},
+      {label:"高台など安全な場所へすぐ避難する", keywords:["高台","高い場所","高い所","高台へ避難","避難する","避難所"]},
+      {label:"警報・自治体の情報に従う", keywords:["警報","防災情報","自治体","避難情報","指示に従う"]}
+    ],
+    choices:[
+      "川や橋を避け、警報に従って高台などへ直ちに避難する。",
+      "友人と橋を渡って、できるだけ早く帰宅する。",
+      "津波の様子を確認するため、海や川の近くで待つ。"
+    ], correctChoice:0,
+    example:"友人に橋や川へ近づかないよう伝え、津波警報に従って直ちに高台など安全な場所へ避難する。"
+  },
+  "大地震発生": {
+    criteria:[
+      {label:"頭や身を守り、落下物に注意する",keywords:["頭を守る","身を守る","落下物","ガラス","周囲を確認"]},
+      {label:"建物・塀など倒壊の危険がある場所から離れる",keywords:["建物から離れる","建物を避ける","塀から離れる","ビルから離れる","倒壊","公園","広場"]},
+      {label:"揺れが収まった後も安全を確認する",keywords:["揺れが収ま","余震","安全を確認","情報を確認","避難情報"]}
+    ],
+    choices:[
+      "頭や身を守り、揺れや落下物に注意しながら建物から離れた安全な場所へ移動する。",
+      "古いビルの軒下に入り、揺れが収まるまで待つ。",
+      "周囲を確認せず、人の流れに合わせて走る。"
+    ],correctChoice:0,
+    example:"まず頭や身を守り、ガラスや落下物に注意する。揺れが収まったら、建物などから離れた安全な広場へ移動し、情報を確認する。"
+  },
+  "河川氾濫警報": {
+    criteria:[
+      {label:"川や冠水した道路に近づかない",keywords:["川から離れる","川に近づかない","川を避ける","冠水した道路を避ける","水の中を歩かない"]},
+      {label:"避難情報を確認し、早めに行動する",keywords:["早めに避難","すぐ避難","避難情報","警報","市役所","自治体"]},
+      {label:"安全な場所へ避難する",keywords:["高台","安全な場所","避難所","頑丈な建物","上の階","垂直避難"]}
+    ],
+    choices:[
+      "避難情報を確認し、川や冠水道路を避けて安全な場所へ早めに避難する。",
+      "川の様子を近くで確認し、まだ大丈夫なら帰宅を続ける。",
+      "水が流れている道路を急いで横切る。"
+    ],correctChoice:0,
+    example:"自治体の避難情報を確認し、川や冠水した道路には近づかず、早めに指定避難所や安全な高い場所へ移動する。"
+  },
+  "エレベーター閉じ込め事故": {
+    criteria:[
+      {label:"非常ボタン・非常電話で連絡する",keywords:["非常ボタン","非常電話","連絡","管理室","救助を要請","通報"]},
+      {label:"扉を無理に開けたり、自力で脱出したりしない",keywords:["無理に脱出しない","扉を開けない","こじ開けない","自力で脱出しない","脱出を試みない"]},
+      {label:"落ち着いて救助を待つ",keywords:["落ち着く","落ち着いて","救助を待つ","待機","待つ"]}
+    ],
+    choices:[
+      "非常ボタンや非常電話で連絡し、扉を無理に開けず落ち着いて救助を待つ。",
+      "扉をこじ開け、隙間から自力で外へ出る。",
+      "何も連絡せず、力いっぱい扉を押し続ける。"
+    ],correctChoice:0,
+    example:"非常ボタンや非常電話で管理者へ連絡し、閉じ込められた状況を伝える。扉を無理に開けず、落ち着いて救助を待つ。"
+  },
+  "土砂崩れ警戒": {
+    criteria:[
+      {label:"土砂災害の兆候・警戒情報を重く見る",keywords:["土砂災害警戒情報","小石","斜面","異音","兆候","警戒情報"]},
+      {label:"危険な斜面や沢から離れる",keywords:["斜面から離れる","斜面に近づかない","沢から離れる","山から離れる","危険区域から離れる"]},
+      {label:"危険が高まる前に安全な場所へ避難する",keywords:["早めに避難","すぐ避難","避難所","頑丈な建物","安全な場所","自治体の指示"]}
+    ],
+    choices:[
+      "警戒情報や異変を見逃さず、斜面・沢から離れて早めに安全な場所へ避難する。",
+      "雨が弱まるまで斜面の近くで様子を見る。",
+      "土砂の音が聞こえてから、斜面を横切って避難する。"
+    ],correctChoice:0,
+    example:"土砂災害警戒情報や斜面の異変を確認したら、様子見をせず、斜面や沢から離れて自治体の避難情報に従い早めに避難する。"
+  },
+  "大型台風接近": {
+    criteria:[
+      {label:"屋外の移動を避ける",keywords:["外出を避ける","移動を避ける","屋外に出ない","歩き続けない","外を歩かない"]},
+      {label:"頑丈な建物など安全な屋内へ入る",keywords:["頑丈な建物","建物の中","屋内","室内","安全な建物","屋内に避難"]},
+      {label:"飛来物や自治体・気象情報に注意する",keywords:["飛来物","看板","気象情報","台風情報","警報","窓から離れる"]}
+    ],
+    choices:[
+      "無理に歩き続けず、気象情報を確認して頑丈な建物など安全な場所にとどまる。",
+      "風が強くても、急いで屋外を歩いて帰宅する。",
+      "看板や木の近くで風が弱まるのを待つ。"
+    ],correctChoice:0,
+    example:"強風の中で無理に移動せず、近くの頑丈な建物など安全な屋内へ入り、気象情報や自治体の指示を確認する。"
+  },
+  "火山噴火": {
+    criteria:[
+      {label:"火口・噴火場所から離れる",keywords:["火山から離れる","火口から離れる","近づかない","離れる","避難する"]},
+      {label:"自治体などの避難指示に従う",keywords:["避難指示","避難情報","防災無線","自治体","指示に従う"]},
+      {label:"火山灰・噴石から身を守る",keywords:["屋内","建物の中","火山灰","マスク","頭を守る","噴石"]}
+    ],
+    choices:[
+      "見物せず、避難情報に従って火口から離れ、可能なら建物内などで身を守る。",
+      "噴火を撮影するため、火口に近づく。",
+      "火山灰が降る中で屋外にとどまり、様子を見る。"
+    ],correctChoice:0,
+    example:"噴火を見物せず、自治体などの指示に従って火口から離れる。火山灰や噴石に注意し、安全な建物内などで身を守る。"
+  },
+  "豪雪による雪害": {
+    criteria:[
+      {label:"視界不良・積雪の危険を認識する",keywords:["視界","吹雪","大雪警報","積雪","天候","気象情報"]},
+      {label:"山道や危険な近道を避ける",keywords:["山道を避ける","山道に行かない","近道をやめる","危険な道を避ける"]},
+      {label:"安全な屋内で天候の回復や情報を待つ",keywords:["建物","公共施設","屋内","安全な場所","天候の回復","移動を避ける","避難"]}
+    ],
+    choices:[
+      "危険な山道を避け、安全な建物へ移動して天候や交通情報を確認する。",
+      "近道の山道を通り、視界が悪くても歩き続ける。",
+      "吹雪の中で立ち止まり、屋外で天候が回復するまで待つ。"
+    ],correctChoice:0,
+    example:"吹雪や視界不良の中で無理に移動せず、危険な山道を避けて安全な建物へ移動し、天候や交通情報を確認する。"
+  }
+};
+
+function renderChoiceOptions(){
+  const container = document.getElementById('choiceOptions');
+  if(!container || !currentEvent) return;
+  container.textContent = '';
+  const guide = eventLearningGuide[currentEvent.title];
+  if(!guide) return;
+  // 表示順だけを毎回シャッフルする。valueには元の選択肢番号を保持し、
+  // 正誤判定（guide.correctChoice）が並び替えの影響を受けないようにする。
+  const shuffledChoices = guide.choices
+    .map(function(choice, originalIndex){ return { choice, originalIndex }; });
+  for(let i = shuffledChoices.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledChoices[i], shuffledChoices[j]] = [shuffledChoices[j], shuffledChoices[i]];
+  }
+  shuffledChoices.forEach(function(item,displayIndex){
+    const label = document.createElement('label');
+    label.className = 'choice-option';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'eventChoice';
+    radio.value = String(item.originalIndex);
+    radio.setAttribute('aria-label', '選択肢' + (displayIndex + 1) + '：' + item.choice);
+    const text = document.createElement('span');
+    text.textContent = item.choice;
+    label.appendChild(radio);
+    label.appendChild(text);
+    container.appendChild(label);
+  });
+}
+
+let answerMode = 'choice';
+function setAnswerMode(mode){
+    if(mode !== 'choice' && mode !== 'text') return;
+    answerMode = mode;
+    const choiceMode = mode === 'choice';
+    document.getElementById('modeChoiceButton').setAttribute('aria-pressed', String(choiceMode));
+    document.getElementById('modeTextButton').setAttribute('aria-pressed', String(!choiceMode));
+    document.getElementById('choiceArea').hidden = !choiceMode;
+    document.getElementById('textAnswerArea').hidden = choiceMode;
+    // モード変更後も回答し直せるようにし、入力済みの内容は保持する。
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('answerButton').disabled = false;
+    document.getElementById('answerButton').textContent = '回答して物語を進める';
+    document.getElementById('answerModeHeading').textContent = choiceMode ? '回答モード：選択式' : '回答モード：自由記述';
+}
+
 let currentEvent;
 let currentPin = null;
+let storyBranchAdvanced = false;
+let storyBranchCorrect = null;
 // 解きなおし用に間違えた問題を保存
 let wrongEvents = [];
 let learningHistory = [];
+let currentPlayer = 'ゲスト';
+let playerScores = {};
+let accounts = {};
+let loggedInAccount = null;
+const PLAYER_SCORES_KEY = 'disasterLearningPlayerScoresV1';
+const CURRENT_PLAYER_KEY = 'disasterLearningCurrentPlayerV1';
+const ACCOUNTS_KEY = 'disasterLearningAccountsV1';
+
+function loadPlayerData(){
+    try{
+        const saved = JSON.parse(localStorage.getItem(PLAYER_SCORES_KEY) || '{}');
+        if(saved && typeof saved === 'object' && !Array.isArray(saved)) playerScores = saved;
+        const savedAccounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '{}');
+        if(savedAccounts && typeof savedAccounts === 'object' && !Array.isArray(savedAccounts)) accounts = savedAccounts;
+    }catch(error){ playerScores = {}; accounts = {}; }
+    currentPlayer = 'ゲスト';
+    document.body.classList.remove('auth-required');
+}
+function savePlayerData(){
+    try{ localStorage.setItem(PLAYER_SCORES_KEY, JSON.stringify(playerScores)); }
+    catch(error){ console.warn('ランキングを保存できませんでした。', error); }
+}
+function saveAccounts(){
+    try{ localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts)); }
+    catch(error){ alert('アカウントを保存できませんでした。ブラウザーの保存設定を確認してください。'); }
+}
+function getPlayerRecord(name){
+    if(!playerScores[name]) playerScores[name] = {score:0, attempts:0, correct:0};
+    return playerScores[name];
+}
+async function passwordDigest(password){
+    if(!window.crypto || !crypto.subtle) throw new Error('安全なパスワード処理を利用できません。HTTPSまたはlocalhostで開いてください。');
+    const bytes = new TextEncoder().encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function authFields(){
+    return {
+      name:(document.getElementById('authPlayerName').value||'').trim().slice(0,20),
+      email:(document.getElementById('authEmail').value||'').trim().toLowerCase(),
+      password:document.getElementById('authPassword').value||''
+    };
+}
+function setAuthMessage(message, isError=false){
+    const el=document.getElementById('authMessage');
+    el.textContent=message;
+    el.style.color=isError?'#b42318':'#176b45';
+}
+async function registerAccount(){
+    const f=authFields();
+    if(!f.name || !f.email || !f.password){setAuthMessage('プレイヤー名・メールアドレス・パスワードをすべて入力してください。',true);return;}
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(f.email)){setAuthMessage('有効なメールアドレスを入力してください。',true);return;}
+    if(f.password.length<8){setAuthMessage('パスワードは8文字以上で入力してください。',true);return;}
+    if(accounts[f.email]){setAuthMessage('このメールアドレスは登録済みです。ログインしてください。',true);return;}
+    if(Object.values(accounts).some(a=>a.name.toLowerCase()===f.name.toLowerCase())){setAuthMessage('このプレイヤー名は使用されています。別の名前を入力してください。',true);return;}
+    try{
+      accounts[f.email]={name:f.name,passwordHash:await passwordDigest(f.password),createdAt:new Date().toISOString()};
+      saveAccounts();
+      await establishSession(f.email);
+      setAuthMessage('新規登録が完了しました。ログインしました。');
+    }catch(e){setAuthMessage(e.message||'登録できませんでした。',true);}
+}
+async function loginAccount(){
+    const f=authFields();
+    if(!f.email || !f.password){setAuthMessage('メールアドレスとパスワードを入力してください。',true);return;}
+    try{
+      const account=accounts[f.email];
+      if(!account || account.passwordHash!==await passwordDigest(f.password)){setAuthMessage('メールアドレスまたはパスワードが違います。',true);return;}
+      await establishSession(f.email);
+      setAuthMessage('ログインしました。');
+    }catch(e){setAuthMessage(e.message||'ログインできませんでした。',true);}
+}
+async function establishSession(email){
+    loggedInAccount=email;
+    currentPlayer=accounts[email].name;
+    getPlayerRecord(currentPlayer);
+    savePlayerData();
+    document.body.classList.remove('auth-required');
+    document.getElementById('sessionInfo').textContent='ログイン中：'+currentPlayer+'（'+email+'）';
+    document.getElementById('guestStatusButton').textContent='ログイン中：'+currentPlayer;
+    document.getElementById('authPanel').hidden=true;
+    document.getElementById('authPassword').value='';
+    renderLeaderboard();
+    renderPlayerInfo();
+    renderLearningRecords();
+}
+function openAuthPanel(mode){
+    const panel=document.getElementById('authPanel');
+    panel.hidden=false;
+    document.getElementById('authPlayerName').style.display = mode==='login' ? 'none' : 'block';
+    document.querySelector('label[for="authPlayerName"]').style.display = mode==='login' ? 'none' : 'block';
+    document.getElementById('authPassword').autocomplete = mode==='register' ? 'new-password' : 'current-password';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    setAuthMessage(mode==='register' ? '新規登録する場合はプレイヤー名・メールアドレス・パスワードを入力してください。' : '登録済みのメールアドレスとパスワードを入力してください。');
+}
+function closeAuthPanel(){ document.getElementById('authPanel').hidden=true; }
+function showGuestStatus(){
+    alert('ゲストとしてプレイできます。ログインしなくても学習や回答が可能です。アカウントにスコアを保存したい場合は「ログイン」または「新規登録」を選んでください。');
+}
+function logoutAccount(){
+    loggedInAccount=null;
+    currentPlayer='ゲスト';
+    document.getElementById('authPassword').value='';
+    document.getElementById('sessionInfo').textContent='ゲストとしてプレイ中です。';
+    document.getElementById('guestStatusButton').textContent='ゲストでプレイ中';
+    document.getElementById('authPanel').hidden=true;
+    renderPlayerInfo();
+    renderLeaderboard();
+    setAuthMessage('ログアウトしました。ゲストとして引き続きプレイできます。');
+}
+function requireLogin(){ return true; }
+function renderPlayerInfo(){
+    const info = document.getElementById('currentPlayerInfo');
+    const score = document.getElementById('playerScore');
+    const rank = document.getElementById('playerRank');
+    if(info) info.textContent = loggedInAccount ? 'ログイン中のプレイヤー：' + currentPlayer : 'ゲストとしてプレイ中です。ゲストのスコアはランキング対象外です。';
+    const record = loggedInAccount ? getPlayerRecord(currentPlayer) : {score:0,attempts:0,correct:0};
+    if(score) score.textContent = record.score + '点';
+    const ranked = Object.entries(playerScores).sort((a,b) => b[1].score-a[1].score || b[1].attempts-a[1].attempts || a[0].localeCompare(b[0],'ja'));
+    const index = ranked.findIndex(item => item[0] === currentPlayer);
+    if(rank) rank.textContent = index < 0 ? '--' : (index+1) + '位';
+}
+function renderLeaderboard(){
+    const list = document.getElementById('leaderboard');
+    if(!list) return;
+    list.replaceChildren();
+    const registeredNames = new Set(Object.values(accounts).map(account => account.name));
+    const ranked = Object.entries(playerScores)
+      .filter(([name,record]) => registeredNames.has(name) && record && Number.isFinite(Number(record.score)))
+      .sort((a,b) => Number(b[1].score)-Number(a[1].score) || Number(b[1].attempts)-Number(a[1].attempts) || a[0].localeCompare(b[0],'ja'));
+    if(!ranked.length){
+      const li=document.createElement('li'); li.textContent='まだランキング記録がありません。問題に回答してスコアを獲得しましょう。'; list.appendChild(li);
+    }else{
+      ranked.slice(0,20).forEach(([name,record],index)=>{
+        const li=document.createElement('li');
+        li.textContent=(index+1)+'位　'+name+'：'+Number(record.score)+'点（正解 '+Number(record.correct)+'／回答 '+Number(record.attempts)+'）';
+        if(name===currentPlayer) li.textContent='▶ '+li.textContent+' ← あなた';
+        list.appendChild(li);
+      });
+    }
+    renderPlayerInfo();
+}
+function resetLeaderboard(){
+    if(!confirm('このブラウザーに保存された全プレイヤーのランキングを消去しますか？')) return;
+    playerScores = {};
+    getPlayerRecord(currentPlayer);
+    savePlayerData();
+    renderLeaderboard();
+}
+loadPlayerData();
+let weakReviewQueue = [];
+let weakReviewIndex = 0;
+let weakReviewActive = false;
+
+// 記録をブラウザー内に保存し、再読み込み後も復元する
+function saveLearningData(){
+    try{
+        localStorage.setItem('disasterLearningHistoryV5', JSON.stringify(learningHistory));
+        localStorage.setItem('disasterLearningWrongTitlesV5', JSON.stringify(wrongEvents.map(e => e.title)));
+    }catch(error){
+        console.warn('学習記録を保存できませんでした。', error);
+    }
+}
+function restoreLearningData(){
+    try{
+        const savedHistory = JSON.parse(localStorage.getItem('disasterLearningHistoryV5') || '[]');
+        if(Array.isArray(savedHistory)) learningHistory = savedHistory;
+        const savedWrongTitles = JSON.parse(localStorage.getItem('disasterLearningWrongTitlesV5') || '[]');
+        if(Array.isArray(savedWrongTitles)){
+            wrongEvents = savedWrongTitles.map(title => events.find(e => e.title === title)).filter(Boolean);
+        }
+    }catch(error){
+        learningHistory = [];
+        wrongEvents = [];
+    }
+}
+restoreLearningData();
+setAnswerMode('choice');
 
 function switchTab(name){
     const names = ['map','learning','records'];
@@ -1429,6 +1864,7 @@ document.querySelectorAll('[role="tab"]').forEach(function(tab){
 });
 
 function startRandomLearning(){
+    if(!requireLogin()) return;
     generateEvent();
     switchTab('learning');
     openEventWindow();
@@ -1438,19 +1874,74 @@ function renderLearningRecords(){
     const summary = document.getElementById('recordSummary');
     const history = document.getElementById('learningHistory');
     const wrong = document.getElementById('learningWrongList');
-    if(summary) summary.textContent = learningHistory.length
-      ? '回答数：' + learningHistory.length + '件／正解：' + learningHistory.filter(x => x.correct).length + '件'
-      : '回答した問題はまだありません。';
+    const stats = document.getElementById('recordStats');
+    const categories = document.getElementById('categoryAccuracy');
+    const total = learningHistory.length;
+    const correctCount = learningHistory.filter(x => x.correct).length;
+    const accuracy = total ? Math.round(correctCount / total * 100) : 0;
+    if(summary) summary.textContent = total
+      ? '回答した問題数：' + total + '件／正解：' + correctCount + '件／正答率：' + accuracy + '%'
+      : '回答した問題はまだありません。問題に回答すると、ここに学習成績が表示されます。';
+    if(stats){
+        stats.replaceChildren();
+        [
+          ['回答した問題数', total + '問'],
+          ['正解数', correctCount + '問'],
+          ['正答率', accuracy + '%'],
+          ['復習が必要な問題', wrongEvents.length + '種類']
+        ].forEach(function(pair){
+            const card = document.createElement('div');
+            card.className = 'record-stat';
+            const label = document.createElement('span');
+            label.textContent = pair[0];
+            const value = document.createElement('strong');
+            value.textContent = pair[1];
+            card.append(label, value);
+            stats.appendChild(card);
+        });
+    }
+    if(categories){
+        categories.replaceChildren();
+        const titles = [...new Set(events.map(e => e.title))];
+        titles.forEach(function(title){
+            const attempts = learningHistory.filter(item => item.title === title);
+            if(!attempts.length) return;
+            const correct = attempts.filter(item => item.correct).length;
+            const rate = Math.round(correct / attempts.length * 100);
+            const card = document.createElement('div');
+            card.className = 'category-rate';
+            const label = document.createElement('strong');
+            label.textContent = title + '：' + rate + '%';
+            const detail = document.createElement('p');
+            detail.className = 'small-note';
+            detail.textContent = correct + '／' + attempts.length + '問正解';
+            const progress = document.createElement('progress');
+            progress.max = 100; progress.value = rate;
+            progress.setAttribute('aria-label', title + 'の正答率 ' + rate + '%');
+            card.append(label, progress, detail);
+            categories.appendChild(card);
+        });
+        if(!categories.children.length) categories.textContent = '各シナリオに回答すると、種類別の正答率が表示されます。';
+    }
     if(history){
-      history.textContent = '';
+      history.replaceChildren();
       learningHistory.slice().reverse().forEach(function(item){
         const li = document.createElement('li');
-        li.textContent = item.title + ' — ' + (item.correct ? '正解' : '要復習') + '（' + item.time + '）';
+        const status = item.correct ? '正解' : '要復習';
+        li.textContent = item.title + ' — ' + status + '（' + (item.time || '') + '）';
+        const detail = document.createElement('div');
+        detail.className = 'answer-history-detail';
+        detail.textContent = '前回の回答：' + (item.answer || '自由記述なし') +
+          (item.choiceText ? '\
+選択した回答：' + item.choiceText : '') +
+          (item.criteriaCount !== undefined ? '\
+評価観点：' + item.criteriaCount + '個' : '');
+        li.appendChild(detail);
         history.appendChild(li);
       });
     }
     if(wrong){
-      wrong.textContent = '';
+      wrong.replaceChildren();
       if(!wrongEvents.length){
         wrong.textContent = '間違えた問題はありません。';
       } else {
@@ -1460,22 +1951,132 @@ function renderLearningRecords(){
           button.textContent = item.title + 'を解きなおす';
           button.addEventListener('click', function(){ retryWrongEvent(wrongEvents.indexOf(item)); });
           wrong.appendChild(button);
+          const previous = [...learningHistory].reverse().find(h => h.title === item.title && !h.correct);
+          if(previous){
+              const detail = document.createElement('div');
+              detail.className = 'answer-history-detail';
+              detail.textContent = '前回の回答：' + (previous.answer || '自由記述なし') +
+                (previous.choiceText ? '\
+選択した回答：' + previous.choiceText : '');
+              wrong.appendChild(detail);
+          }
         });
       }
     }
 }
-
+function startWeakReview(){
+    const counts = {};
+    learningHistory.forEach(item => {
+        if(!counts[item.title]) counts[item.title] = {total:0, wrong:0};
+        counts[item.title].total++;
+        if(!item.correct) counts[item.title].wrong++;
+    });
+    weakReviewQueue = wrongEvents.slice().sort((a,b) => {
+        const aa = counts[a.title] || {total:1,wrong:1};
+        const bb = counts[b.title] || {total:1,wrong:1};
+        return (bb.wrong / bb.total) - (aa.wrong / aa.total) || bb.wrong - aa.wrong;
+    });
+    if(!weakReviewQueue.length){
+        alert('復習が必要な問題はありません。まずは災害シナリオに挑戦しましょう。');
+        return;
+    }
+    weakReviewIndex = 0;
+    weakReviewActive = true;
+    switchTab('learning');
+    loadWeakReviewQuestion();
+}
+function loadWeakReviewQuestion(){
+    if(!weakReviewQueue.length || weakReviewIndex >= weakReviewQueue.length){
+        weakReviewActive = false;
+        alert('苦手問題の復習が終了しました。学習記録を確認しましょう。');
+        switchTab('records');
+        return;
+    }
+    currentEvent = weakReviewQueue[weakReviewIndex];
+    document.getElementById('eventTitle').textContent = '【苦手問題の復習 ' + (weakReviewIndex + 1) + '/' + weakReviewQueue.length + '】 ' + currentEvent.title;
+    document.getElementById('storyText').innerHTML = currentEvent.story;
+    document.getElementById('answer').value = '';
+    renderChoiceOptions();
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('answerButton').disabled = false;
+    openEventWindow();
+}
 function clearLearningHistory(){
+    if(!confirm('学習履歴と苦手問題の記録をすべて消去しますか？')) return;
     learningHistory = [];
+    wrongEvents = [];
+    weakReviewQueue = [];
+    weakReviewActive = false;
+    try{
+        localStorage.removeItem('disasterLearningHistoryV5');
+        localStorage.removeItem('disasterLearningWrongTitlesV5');
+    }catch(error){}
     renderLearningRecords();
 }
 
 // イベント生成
 
+
+function resetStoryBranch(){
+    storyBranchAdvanced = false;
+    storyBranchCorrect = null;
+    const outcome = document.getElementById('branchOutcome');
+    if(outcome){ outcome.hidden = true; outcome.replaceChildren(); }
+}
+function submitAnswerAndAdvanceStory(){
+    // 選択式では、物語を進めてから同じボタン操作で回答判定も行う。
+    if(answerMode === 'choice'){
+        const selectedChoice = document.querySelector('input[name="eventChoice"]:checked');
+        if(!selectedChoice){
+            alert('先に行動の選択肢を1つ選んでください。');
+            return;
+        }
+        if(!storyBranchAdvanced){
+            advanceStoryBranch();
+        }
+        if(!storyBranchAdvanced) return;
+    }
+    checkAnswer();
+}
+
+function advanceStoryBranch(){
+    if(!currentEvent) return;
+    const selectedChoice = document.querySelector('input[name="eventChoice"]:checked');
+    if(!selectedChoice){
+        alert('先に行動の選択肢を1つ選んでください。');
+        return;
+    }
+    if(storyBranchAdvanced){
+        alert('物語はすでに進んでいます。選択内容を確認してください。');
+        return;
+    }
+    const guide = eventLearningGuide[currentEvent.title];
+    const choiceIndex = Number(selectedChoice.value);
+    storyBranchCorrect = !!guide && choiceIndex === guide.correctChoice;
+    storyBranchAdvanced = true;
+
+    const outcome = document.getElementById('branchOutcome');
+    outcome.replaceChildren();
+    outcome.hidden = false;
+    const heading = document.createElement('h4');
+    heading.textContent = storyBranchCorrect ? '物語の続き：安全な行動を選んだ場合' : '物語の続き：危険が高まる行動を選んだ場合';
+    const selected = document.createElement('p');
+    selected.textContent = 'あなたが選んだ行動：' + selectedChoice.parentElement.textContent.trim();
+    const narrative = document.createElement('div');
+    narrative.innerHTML = storyBranchCorrect
+      ? (currentEvent.success || '<p>あなたは安全を確保できました。引き続き周囲の状況と最新の防災情報を確認しましょう。</p>')
+      : (currentEvent.failure || '<p>その行動では危険が高まる可能性があります。安全な行動を考え直しましょう。</p>');
+    outcome.append(heading, selected, narrative);
+    outcome.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+}
+
 function generateEvent(){
+    if(!requireLogin()) return;
 
     currentEvent =
     events[Math.floor(Math.random()*events.length)];
+    resetStoryBranch();
 
     document.getElementById("eventTitle").innerText =
     currentEvent.title;
@@ -1484,6 +2085,7 @@ function generateEvent(){
     currentEvent.story;
 
     document.getElementById("answer").value = "";
+    renderChoiceOptions();
 
     document.getElementById("result").style.display =
     "none";
@@ -1668,6 +2270,7 @@ document.addEventListener("keydown",function(e){
 function retryWrongEvent(index){
 
     currentEvent = wrongEvents[index];
+    resetStoryBranch();
 
     document.getElementById("eventTitle").innerText =
     currentEvent.title;
@@ -1676,6 +2279,7 @@ function retryWrongEvent(index){
     currentEvent.story;
 
     document.getElementById("answer").value="";
+    renderChoiceOptions();
 
     document.getElementById("result").style.display="none";
     document.getElementById("answerButton").disabled=false;
@@ -1778,63 +2382,213 @@ function focusShelterSearch(){
 
 // 判定
 function checkAnswer(){
-
-    const answer = document.getElementById("answer").value;
+    const answer = document.getElementById("answer").value.trim();
     const result = document.getElementById("result");
     const answerButton = document.getElementById("answerButton");
+    const selectedChoice = document.querySelector('input[name="eventChoice"]:checked');
+    const guide = eventLearningGuide[currentEvent.title];
 
-    if(answer.trim()===""){
-        alert("避難行動を入力してください。");
+    if(answerMode === 'choice' && !selectedChoice){
+        alert("選択肢を1つ選んでください。");
+        return;
+    }
+    if(answerMode === 'text' && !answer){
+        alert("自由記述を入力してください。");
         return;
     }
 
+    const matchedCriteria = [];
+    const missedCriteria = [];
     let correct = false;
+    let choiceCorrect = false;
+    let choiceFeedback = "";
 
-    for(let keyword of currentEvent.keywords){
-        if(answer.includes(keyword)){
-            correct = true;
-            break;
+    if(guide){
+        if(selectedChoice){
+            choiceCorrect = Number(selectedChoice.value) === guide.correctChoice;
+            choiceFeedback = choiceCorrect
+              ? "選択式：適切な行動を選べています。"
+              : "選択式：この状況では別の行動が適切です。";
         }
+
+        // 自由記述は複数の評価観点で簡易判定。1つのキーワードだけでは正解にしない。
+        if(answer){
+            guide.criteria.forEach(function(criterion){
+                const matched = criterion.keywords.some(function(keyword){
+                    return answer.includes(keyword);
+                });
+                (matched ? matchedCriteria : missedCriteria).push(criterion.label);
+            });
+        }
+
+        const textPassed = answer
+          ? matchedCriteria.length >= Math.min(2, guide.criteria.length)
+          : false;
+        // 選択中のモードだけを判定対象にする。
+        correct = answerMode === 'choice' ? choiceCorrect : textPassed;
+    }else{
+        const keywords = currentEvent.keywords || [];
+        const hitCount = keywords.filter(keyword => answer.includes(keyword)).length;
+        correct = answerMode === 'choice' ? choiceCorrect : hitCount >= 2;
+    }
+
+    result.style.display = "block";
+    result.className = correct ? "correct" : "incorrect";
+
+    const heading = document.createElement('h3');
+    heading.textContent = correct ? '判定：正解' : '判定：もう一度確認しましょう';
+    result.replaceChildren(heading);
+
+    const reason = document.createElement('p');
+    if(guide){
+        if(answerMode === 'choice'){
+            reason.textContent = choiceFeedback;
+        }else{
+            reason.textContent = '自由記述の評価：' + matchedCriteria.length + '／' + guide.criteria.length +
+              '個の観点に触れています。' +
+              (correct ? '複数の重要な観点が含まれています。' : '重要な観点を複数、具体的に書きましょう。');
+        }
+    }else{
+        reason.textContent = correct ? '複数のキーワードが含まれています。' : '重要な行動を複数、具体的に書いてみましょう。';
+    }
+    result.appendChild(reason);
+
+    if(guide){
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback-section';
+        const criteriaTitle = document.createElement('h4');
+        criteriaTitle.textContent = '判断の観点';
+        feedback.appendChild(criteriaTitle);
+        const criteriaList = document.createElement('ul');
+        guide.criteria.forEach(function(criterion){
+            const li = document.createElement('li');
+            const matched = matchedCriteria.includes(criterion.label);
+            li.textContent = answerMode === 'text' ? (matched ? '確認できた：' : 'まだ書かれていない：') + criterion.label : '判断の観点：' + criterion.label;
+            criteriaList.appendChild(li);
+        });
+        feedback.appendChild(criteriaList);
+
+
+        const exampleTitle = document.createElement('h4');
+        exampleTitle.textContent = '回答例';
+        feedback.appendChild(exampleTitle);
+        const example = document.createElement('p');
+        example.textContent = guide.example;
+        feedback.appendChild(example);
+
+        const note = document.createElement('p');
+        note.className = 'small-note';
+        note.textContent = '学習ポイント：これはキーワードを用いた簡易判定です。表現の違いや状況によっては判定が十分でない場合があります。実際の災害時は自治体・気象庁などの最新情報と現場の状況を優先してください。';
+        feedback.appendChild(note);
+        result.appendChild(feedback);
+    }else{
+        const explanation = document.createElement('div');
+        explanation.innerHTML = correct ? currentEvent.success : currentEvent.failure;
+        result.appendChild(explanation);
     }
 
     if(correct){
-        // 正解した問題は「間違えた問題」から削除
         wrongEvents = wrongEvents.filter(e => e !== currentEvent);
-        result.style.display = "block";
-        result.className = "correct";
-        result.innerHTML = currentEvent.success;
-    }else{
-        result.style.display = "block";
-        result.className = "incorrect";
-        result.innerHTML = currentEvent.failure;
-
-        // 間違えた問題を保存
-        if(!wrongEvents.includes(currentEvent)){
-            wrongEvents.push(currentEvent);
-        }
+    }else if(!wrongEvents.includes(currentEvent)){
+        wrongEvents.push(currentEvent);
     }
 
+    // プレイヤー別スコア：正解10点、不正解でも挑戦点2点
+    const playerRecord = getPlayerRecord(currentPlayer);
+    playerRecord.attempts += 1;
+    playerRecord.score += correct ? 10 : 2;
+    if(correct) playerRecord.correct += 1;
+    savePlayerData();
+
     learningHistory.push({
+        player: currentPlayer,
+        scoreEarned: correct ? 10 : 2,
         title: currentEvent.title,
         correct: correct,
-        time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})
+        mode: answerMode,
+        answer: answerMode === 'text' ? answer : '',
+        choiceText: answerMode === 'choice' && selectedChoice ? selectedChoice.parentElement.textContent.trim() : '',
+        criteriaCount: guide ? matchedCriteria.length : undefined,
+        time: new Date().toLocaleString('ja-JP', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'})
     });
+    saveLearningData();
     renderLearningRecords();
-
-    // 回答後もイベントウィンドウは自動で閉じない
-    // ストーリーと結果を確認できるよう、そのまま表示する
+    renderLeaderboard();
     answerButton.disabled = true;
+    if(weakReviewActive && weakReviewQueue.length && weakReviewQueue.some(e => e.title === currentEvent.title)){
+        const nextReview = document.createElement('button');
+        nextReview.type = 'button';
+        nextReview.textContent = weakReviewIndex + 1 < weakReviewQueue.length ? '次の苦手問題へ' : '復習を終了して学習記録を見る';
+        nextReview.addEventListener('click', function(){
+            weakReviewIndex++;
+            loadWeakReviewQuestion();
+        });
+        result.appendChild(nextReview);
+    }
 
-    // 回答済みの青ピンだけを削除する
-    // イベントウィンドウはユーザーが任意に閉じる
     if(currentPin){
         map.removeLayer(currentPin);
         eventMarkers = eventMarkers.filter(m => m !== currentPin);
         currentPin = null;
     }
-
 }
 
+
+
+// 初回表示時にプレイヤー別ランキングを復元
+renderLeaderboard();
+renderLearningRecords();
+
+// こどもむけ：ひらがな表示をいつでも切り替える
+// ブラウザーだけで動くよう、画面で使う語句を読み方に置き換える。
+const hiraganaPhraseMap = {
+'防災避難学習システム':'ぼうさい ひなん がくしゅう システム','防災学習':'ぼうさい がくしゅう','学習記録':'がくしゅう きろく','学習履歴':'がくしゅう りれき','現在地の取得をもう一度試す':'げんざいちの しゅとくを もういちど ためす','現在地の取得を再試行':'げんざいちの しゅとくを さいしこう','現在地を取得しています':'げんざいちを しゅとくしています','位置情報の許可を確認しています':'いちじょうほうの きょかを かくにんしています','取得できない場合も':'しゅとくできない ばあいも','最終取得時刻':'さいしゅう しゅとく じこく','まだ取得していません':'まだ しゅとくしていません','位置精度':'いち せいど','未取得':'みしゅとく','地図の使い方':'ちずの つかいかた','自由に地図を見る':'じゆうに ちずを みる','地図を動かして周辺を確認できます':'ちずを うごかして まわりを かくにんできます','GPS追従をオンにすると':'GPSついじゅうを オンにすると','位置情報の更新に合わせて':'いちじょうほうの こうしんに あわせて','現在地へ戻る':'げんざいちへ もどる','避難所を探す':'ひなんじょを さがす','地図を再読み込み':'ちずを さいよみこみ','現在地取得中':'げんざいち しゅとくちゅう','災害時の状況を読み':'さいがいじの じょうきょうを よみ','あなたならどう行動するか考えて回答してください':'あなたなら どう こうどうするか かんがえて こたえてください','地図上の青いマーカーを選ぶか':'ちずの あおい マーカーを えらぶか','下のボタンから学習を始められます':'したの ボタンから がくしゅうを はじめられます','ランダムな災害シナリオを始める':'ランダムな さいがいシナリオを はじめる','選択肢を選んで物語を進めることができます':'せんたくしを えらんで ものがたりを すすめられます','自由記述も併用でき':'じゆうきじゅつも つかえて','回答後には判定と解説が表示されます':'こたえたあとに はんていと かいせつが でます','回答した問題はまだありません':'こたえた もんだいは まだ ありません','災害の種類別の正答率':'さいがいの しゅるいごとの せいかいりつ','苦手な問題を優先して復習する':'にがてな もんだいを ゆうせんして ふくしゅうする','不正解が多い問題を優先して出題します':'まちがいが おおい もんだいを ゆうせんして だします','同じ問題に複数回回答した場合も記録されます':'おなじ もんだいに なんかいも こたえた ばあいも きろくされます','回答履歴':'かいとう りれき','津波警報':'つなみ けいほう','大地震発生':'おおじしん はっせい','河川氾濫警報':'かせん はんらん けいほう','エレベーター閉じ込め事故':'エレベーター とじこめ じこ','土砂崩れ警戒':'どしゃくずれ けいかい','大型台風接近':'おおがた たいふう せっきん','火山噴火':'かざん ふんか','豪雪による雪害':'ごうせつによる せつがい','放課後':'ほうかご','友人':'ともだち','一緒に':'いっしょに','帰宅':'きたく','夕焼け':'ゆうやけ','街並み':'まちなみ','突然':'とつぜん','大きな警報音':'おおきな けいほうおん','緊急地震速報':'きんきゅう じしん そくほう','強い揺れに警戒してください':'つよい ゆれに けいかいしてください','直後':'ちょくご','大地':'だいち','揺れ始めた':'ゆれはじめた','電柱':'でんちゅう','周囲':'まわり','悲鳴':'ひめい','数分後':'すうふんご','新しい通知':'あたらしい つうち','津波警報発令':'つなみ けいほう はつれい','海や川から離れ':'うみや かわから はなれ','直ちに高台へ避難してください':'ただちに たかだいへ ひなんしてください','焦った様子':'あせった ようす','橋を渡れば近道だ':'はしを わたれば ちかみちだ','急ごう':'いそごう','授業で学んだこと':'じゅぎょうで まなんだこと','津波は川を逆流することがある':'つなみは かわを さかのぼることがある','川や橋には近づかないこと':'かわや はしには ちかづかないこと','どのように行動するだろうか':'どのように こうどうするだろうか','避難成功':'ひなん せいこう','避難失敗':'ひなん しっぱい','危険':'きけん','高台へ行こう':'たかだいへ いこう','少し迷った':'すこし まよった','言葉':'ことば','坂道':'さかみち','駆け上がり':'かけあがり','避難所':'ひなんじょ','到着':'とうちゃく','直後':'ちょくご','遠く':'とおく','水音':'みずのおと','振り返る':'ふりかえる','川の水位':'かわの すいい','急激に上昇':'きゅうげきに じょうしょう','橋の周辺':'はしの まわり','濁流':'だくりゅう','飲み込まれていた':'のみこまれていた','青ざめた顔':'あおざめた かお','もし橋を渡っていたら':'もし はしを わたっていたら','安全な場所':'あんぜんな ばしょ','状況を見守り':'じょうきょうを みまもり','自分の判断':'じぶんの はんだん','命を守った':'いのちを まもった','実感した':'じっかんした','従い':'したがい','近道なら早く帰れる':'ちかみちなら はやく かえれる','考えたからだ':'かんがえたからだ','近づくにつれて':'ちかづくにつれて','水の流れる音':'みずの ながれる おと','次の瞬間':'つぎの しゅんかん','濁った水':'にごった みず','川からあふれ出した':'かわから あふれだした','叫び声':'さけびごえ','慌てて引き返そう':'あわてて ひきかえそう','道路の一部':'どうろの いちぶ','冠水':'かんすい','避難が遅れた':'ひなんが おくれた','安全な高台へ移動する時間':'あんぜんな たかだいへ いどうする じかん','失ってしまった':'うしなってしまった','災害時には':'さいがいじには','安全な避難行動を優先することが重要':'あんぜんな ひなんこうどうを ゆうせんすることが たいせつ','休日の午後':'きゅうじつの ごご','商店街':'しょうてんがい','地面':'じめん','商品棚':'しょうひんだな','倒れ':'たおれ','割れる音':'われる おと','人々':'ひとびと','走り出している':'はしりだしている','近く':'ちかく','古いビル':'ふるい ビル','広い公園':'ひろい こうえん','余震':'よしん','周囲を確認':'まわりを かくにん','移動した':'いどうした','頭上':'ずじょう','落下物':'らっかぶつ','危険がない':'きけんがない','安全な広場':'あんぜんな ひろば','身を守る':'みを まもる','大きな余震が発生':'おおきな よしんが はっせい','無事だった':'ぶじだった','落ち着いて情報を集め':'おちついて じょうほうを あつめ','安全に避難':'あんぜんに ひなん','回答して物語を進める':'こたえて ものがたりを すすめる','回答モード':'こたえかた','選択式':'えらぶ ほうほう','自由記述':'じぶんで かく ほうほう','正答率':'せいかいりつ','正解数':'せいかいすう','回答数':'かいとうすう','結果':'けっか','解説':'かいせつ','物語':'ものがたり','選択肢':'せんたくし','災害':'さいがい','避難':'ひなん','行動':'こうどう','現在地':'げんざいち','取得':'しゅとく','確認':'かくにん','地図':'ちず','記録':'きろく','開始':'かいし','終了':'しゅうりょう','成功':'せいこう','失敗':'しっぱい','安全':'あんぜん','危険':'きけん','警報':'けいほう','発生':'はっせい','回答':'かいとう','学習':'がくしゅう','復習':'ふくしゅう','問題':'もんだい','選択':'せんたく','自由':'じゆう','表示':'ひょうじ','進行':'しんこう','移動':'いどう','周辺':'まわり','情報':'じょうほう','更新':'こうしん','設定':'せってい','開始する':'はじめる','もう一度':'もういちど','押してください':'おしてください','選んでください':'えらんでください','考えてください':'かんがえてください','確認してください':'かくにんしてください','してください':'してください','できます':'できます','しています':'しています','されます':'されます','しました':'しました','です':'です','ます':'ます'
+};
+const hiraganaOriginalText = new WeakMap();
+let hiraganaMode = false;
+function convertTextToHiragana(text){
+  let result = text;
+  const keys = Object.keys(hiraganaPhraseMap).sort((a,b)=>b.length-a.length);
+  for(const key of keys) result = result.split(key).join(hiraganaPhraseMap[key]);
+  return result;
+}
+function updateHiraganaText(root=document.body){
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
+    if(!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+    const parent=node.parentElement;
+    if(!parent || parent.closest('script,style,noscript,textarea,input')) return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+  for(const node of nodes){
+    if(!hiraganaOriginalText.has(node)) hiraganaOriginalText.set(node,node.nodeValue);
+    const original=hiraganaOriginalText.get(node);
+    node.nodeValue=hiraganaMode ? convertTextToHiragana(original) : original;
+  }
+}
+function toggleHiraganaMode(){
+  hiraganaMode=!hiraganaMode;
+  document.body.classList.toggle('hiragana-mode',hiraganaMode);
+  const button=document.getElementById('hiraganaToggle');
+  button.setAttribute('aria-pressed',String(hiraganaMode));
+  // ボタン自身の文言は変換対象にせず、状態がひと目で分かるようにする
+  button.textContent=hiraganaMode ? '漢字ありに もどす' : 'ひらがなで よむ';
+  updateHiraganaText();
+}
+const hiraganaObserver=new MutationObserver(mutations=>{
+  if(!hiraganaMode) return;
+  for(const mutation of mutations){
+    for(const node of mutation.addedNodes){
+      if(node.nodeType===Node.TEXT_NODE){
+        if(!hiraganaOriginalText.has(node)) hiraganaOriginalText.set(node,node.nodeValue);
+        node.nodeValue=convertTextToHiragana(hiraganaOriginalText.get(node));
+      }else if(node.nodeType===Node.ELEMENT_NODE && node.id!=='hiraganaToggle'){
+        updateHiraganaText(node);
+      }
+    }
+  }
+});
+hiraganaObserver.observe(document.body,{childList:true,subtree:true});
 </script>
 
 <div id="wrongList">
