@@ -53,6 +53,8 @@ header{
 }
 .map-controls .secondary{background:#526579;}
 .map-controls .active-mode{background:#2a7f62;}
+#routeButton:disabled{opacity:.65;cursor:wait}
+#routeInfo{line-height:1.7}
 .map-help{
     margin:0 15px 12px;
     padding:10px 12px;
@@ -347,10 +349,57 @@ body.hiragana-mode{font-family:"UD Digi Kyokasho NK-R","Yu Gothic",sans-serif;li
 body.hiragana-mode button,body.hiragana-mode .story,body.hiragana-mode p{line-height:1.8;}
 #authPanel[hidden]{display:none!important;}
 #accountControls{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:10px 15px;background:#dce6ef}
-#accountControls button{width:auto;margin:0;padding:10px 18px;font-size:15px}
-#authPanel{display:block}
-#sessionBar{display:block!important}
+#accountControls button{width:auto;min-width:112px;margin:0;padding:10px 18px;font-size:15px}
+#accountControls #accountToggleButton{background:#2a7f62}
+#accountControls #registerOpenButton{background:#526579}
 @media(max-width:480px){#accountControls{justify-content:center}#accountControls button{flex:1}}
+
+/* 設定画面と地図中心のレイアウト */
+#settingsLaunchBar{display:none}
+#settingsOpenButton{
+  position:absolute;top:50%;right:14px;transform:translateY(-50%);
+  display:flex;align-items:center;justify-content:center;
+  width:44px;min-width:44px;height:44px;min-height:44px;
+  margin:0;padding:0;border:1px solid rgba(255,255,255,.35);
+  border-radius:10px;background:rgba(255,255,255,.12);
+  color:#fff;font-size:25px;line-height:1;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+#settingsOpenButton:hover{background:rgba(255,255,255,.22)}
+#settingsOpenButton:focus-visible{outline:3px solid #f4a261;outline-offset:3px}
+header{padding-right:68px}
+@media(max-width:600px){
+  header{padding:14px 62px 14px 12px}
+  #settingsOpenButton{right:10px;width:40px;min-width:40px;height:40px;min-height:40px;font-size:23px}
+}
+#settingsOverlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:12000;padding:18px;overflow-y:auto}
+#settingsOverlay.open{display:flex;align-items:flex-start;justify-content:center}
+#settingsScreen{width:100%;max-width:720px;max-height:calc(100vh - 36px);overflow-y:auto;margin:auto;background:#f8fafc;border-radius:18px;padding:20px;box-shadow:0 18px 55px rgba(0,0,0,.35)}
+.settings-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.settings-heading h2{margin:0;color:#1d3557}
+#settingsCloseButton{width:auto;margin:0;padding:9px 15px;background:#64748b}
+.settings-section{background:#fff;border:1px solid #d8e2eb;border-radius:12px;padding:15px;margin:12px 0}
+.settings-section h3{margin:0 0 10px;color:#1d3557}
+#settingsScreen #accountControls{padding:0;background:transparent;justify-content:flex-start}
+#settingsScreen #accountControls button{flex:1}
+#settingsScreen #authPanel{margin:12px 0!important;box-shadow:none}
+#settingsScreen #hiraganaToggle{position:static!important;width:100%!important;margin:0!important;border:0!important}
+#settingsScreen #gpsInfo{margin:0;padding:0;box-shadow:none}
+#settingsScreen .map-controls{margin:0;grid-template-columns:repeat(2,minmax(0,1fr))}
+#settingsScreen .map-controls button{margin:0}
+#map{height:clamp(390px,68vh,760px);margin:8px 15px 12px;width:calc(100% - 30px);border:2px solid #cbd5e1;box-shadow:0 4px 14px rgba(29,53,87,.18)}
+#routeButton{display:block;width:calc(100% - 30px);max-width:900px;margin:12px auto;padding:14px 18px;font-size:18px}
+#routeInfo{max-width:1000px;margin:0 auto 12px}
+#positionText{max-width:1000px;margin:12px auto!important}
+@media(max-width:600px){
+ #settingsOverlay{padding:8px}
+ #settingsScreen{max-height:calc(100vh - 16px);padding:14px}
+ #settingsScreen .map-controls{grid-template-columns:1fr}
+ #map{height:62vh;min-height:340px;width:calc(100% - 20px);margin:8px 10px}
+ #routeButton{width:calc(100% - 20px)}
+ #positionText{margin:10px!important}
+}
+
 </style>
 <link
 rel="stylesheet"
@@ -364,40 +413,65 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 <body>
 
 <header>
-
 防災避難学習システム
-
-
-
-<button type="button" id="hiraganaToggle" aria-pressed="false" onclick="toggleHiraganaMode()" style="position:absolute;right:12px;top:12px;width:auto;margin:0;padding:10px 14px;font-size:15px;background:#f4a261;color:#17202a;border:2px solid #fff;">ひらがなで よむ</button>
+<button type="button" id="settingsOpenButton" onclick="openSettingsScreen()" aria-label="設定を開く" title="設定" aria-haspopup="dialog" aria-controls="settingsOverlay">⚙</button>
 </header>
-<nav id="accountControls" aria-label="アカウント操作">
-  <button type="button" onclick="openAuthPanel('login')" style="background:#2a7f62;">ログイン</button>
-  <button type="button" onclick="openAuthPanel('register')">新規登録</button>
-  <button type="button" id="guestStatusButton" onclick="showGuestStatus()" style="background:#526579;">ゲストでプレイ中</button>
-</nav>
 
-<section id="authPanel" hidden class="content-card" style="max-width:650px;margin:20px auto;">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><h2>プレイヤー登録・ログイン</h2><button type="button" onclick="closeAuthPanel()" style="width:auto;margin:0;padding:8px 12px;background:#6c757d;">閉じる</button></div>
-  <p>アカウントなしでもゲストとして学習できます。ログイン・新規登録をすると、あなた専用のスコアをランキングに記録できます。</p>
-  <p class="small-note">※この試作版ではアカウントとランキングは、この端末・ブラウザー内に保存されます。別の端末との共有や本番向けの安全な認証にはサーバーが必要です。</p>
-  <form id="authForm" onsubmit="return false;">
-    <label for="authPlayerName">プレイヤー名</label>
-    <input id="authPlayerName" autocomplete="nickname" maxlength="20" placeholder="表示するプレイヤー名" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
-    <label for="authEmail">メールアドレス</label>
-    <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
-    <label for="authPassword">パスワード</label>
-    <input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="8文字以上" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
-      <button type="button" onclick="registerAccount()">新規登録</button>
-      <button type="button" onclick="loginAccount()" style="background:#2a7f62;">ログイン</button>
+<div id="settingsOverlay" role="presentation" onclick="if(event.target===this) closeSettingsScreen()">
+  <section id="settingsScreen" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-heading">
+      <h2 id="settingsTitle">設定</h2>
+      <button type="button" id="settingsCloseButton" onclick="closeSettingsScreen()">閉じる ✕</button>
     </div>
-  </form>
-  <p id="authMessage" role="status" aria-live="polite"></p>
-</section>
-<div id="sessionBar" class="content-card" style="max-width:1100px;">
-  <span id="sessionInfo"></span>
-  <button type="button" onclick="logoutAccount()" style="background:#6c757d;">ログアウト</button>
+
+    <section class="settings-section" aria-labelledby="readingSettingsTitle">
+      <h3 id="readingSettingsTitle">表示・読み上げ補助</h3>
+      <button type="button" id="hiraganaToggle" aria-pressed="false" onclick="toggleHiraganaMode()">ひらがなで よむ</button>
+    </section>
+
+    <section class="settings-section" aria-labelledby="accountSettingsTitle">
+      <h3 id="accountSettingsTitle">アカウント</h3>
+      <nav id="accountControls" aria-label="アカウント操作">
+        <button type="button" id="accountToggleButton" onclick="handleAccountToggle()">ログイン</button>
+        <button type="button" id="registerOpenButton" onclick="openAuthPanel('register')">新規登録</button>
+      </nav>
+      <section id="authPanel" hidden class="content-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><h2>プレイヤー登録・ログイン</h2><button type="button" onclick="closeAuthPanel()" style="width:auto;margin:0;padding:8px 12px;background:#6c757d;">閉じる</button></div>
+        <p>アカウントなしでもゲストとして学習できます。ログイン・新規登録をすると、あなた専用のスコアをランキングに記録できます。</p>
+        <p class="small-note">※この試作版ではアカウントとランキングは、この端末・ブラウザー内に保存されます。別の端末との共有や本番向けの安全な認証にはサーバーが必要です。</p>
+        <form id="authForm" onsubmit="return false;">
+          <label for="authPlayerName">プレイヤー名</label>
+          <input id="authPlayerName" autocomplete="nickname" maxlength="20" placeholder="表示するプレイヤー名" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+          <label for="authEmail">メールアドレス</label>
+          <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+          <label for="authPassword">パスワード</label>
+          <input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="8文字以上" style="width:100%;padding:12px;margin:6px 0 12px;border:1px solid #cbd5e1;border-radius:8px;">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+            <button type="button" id="authRegisterAction" onclick="registerAccount()">新規登録</button>
+            <button type="button" id="authLoginAction" onclick="loginAccount()" style="background:#2a7f62;">ログイン</button>
+          </div>
+        </form>
+        <p id="authMessage" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+
+    <section class="settings-section" aria-labelledby="gpsSettingsTitle">
+      <h3 id="gpsSettingsTitle">現在地・地図の設定</h3>
+      <div id="gpsInfo" role="status" aria-live="polite">
+        <div id="gpsStatusTitle" style="font-weight:bold;font-size:17px;">現在地を取得しています</div>
+        <div id="gpsStatusDetail" style="margin-top:6px;">位置情報の許可を確認しています。取得できない場合も、地図は手動で操作できます。</div>
+        <div id="gpsLastUpdated" style="margin-top:6px;font-size:14px;color:#555;">最終取得時刻：まだ取得していません</div>
+        <div id="gpsAccuracy" style="margin-top:3px;font-size:14px;color:#555;">位置精度：未取得</div>
+      </div>
+      <div class="map-controls" aria-label="地図操作">
+        <button type="button" onclick="startLocationTracking()">現在地を取得・再取得</button>
+        <button id="followModeButton" type="button" class="secondary" onclick="toggleFollowMode()" aria-pressed="false">GPS追従：オフ</button>
+        <button type="button" onclick="moveCurrentLocation()">現在地へ戻る</button>
+        <button type="button" class="secondary" onclick="retryMapTiles()">地図を再読み込み</button>
+      </div>
+      <p class="small-note">GPS追従をオンにすると、位置情報の更新に合わせて地図の中心が現在地へ移動します。</p>
+    </section>
+  </section>
 </div>
 
 <nav class="main-nav" role="tablist" aria-label="主な機能">
@@ -408,48 +482,18 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 
 <main>
 <section id="panel-map" class="tab-panel" role="tabpanel" aria-labelledby="tab-map">
-
-<div id="gpsInfo" role="status" aria-live="polite">
-    <div id="gpsStatusTitle" style="font-weight:bold;font-size:17px;">現在地を取得しています</div>
-    <div id="gpsStatusDetail" style="margin-top:6px;">位置情報の許可を確認しています。取得できない場合も、地図は手動で操作できます。</div>
-    <div id="gpsLastUpdated" style="margin-top:6px;font-size:14px;color:#555;">最終取得時刻：まだ取得していません</div>
-    <div id="gpsAccuracy" style="margin-top:3px;font-size:14px;color:#555;">位置精度：未取得</div>
-    <button type="button" onclick="startLocationTracking()" style="margin-top:10px;">現在地の取得をもう一度試す</button>
-</div>
-
-<div class="map-help">
-    <b>地図の使い方</b><br>
-    「自由に地図を見る」では地図を動かして周辺を確認できます。GPS追従をオンにすると、位置情報の更新に合わせて地図が現在地へ移動します。
-</div>
-
-<div class="map-controls" aria-label="地図操作">
-    <button id="followModeButton" type="button" class="secondary" onclick="toggleFollowMode()" aria-pressed="false">
-        GPS追従：オフ
-    </button>
-    <button type="button" onclick="moveCurrentLocation()">
-        現在地へ戻る
-    </button>
-    <button type="button" class="secondary" onclick="focusShelterSearch()">
-        避難所を探す
-    </button>
-    <button type="button" class="secondary" onclick="retryMapTiles()">
-        地図を再読み込み
-    </button>
-</div>
-<div id="map" role="application" aria-label="地図。ドラッグや拡大縮小で周辺を確認できます。"></div>
-<div id="shelterSearchInfo" class="map-help" style="display:none;" role="status" aria-live="polite">
-    避難所検索機能は、避難所データを登録した段階で利用できるようになります。現時点では地図を手動で動かして周辺を確認してください。災害時は自治体などの最新情報を確認してください。
-</div>
-
-<div id="positionText"
-style="
-margin:15px;
-background:white;
-padding:10px;
-border-radius:10px;
-">
-現在地取得中...
-</div>
+  <div class="map-help">
+    <b>地図を中心に周辺を確認できます</b><br>
+    地図をドラッグ・拡大縮小して周辺を確認してください。現在地などの操作は、画面上部の「設定」から行えます。
+  </div>
+  <div id="map" role="application" aria-label="地図。ドラッグや拡大縮小で周辺を確認できます。"></div>
+  <button id="routeButton" type="button" class="active-mode" onclick="generateEvacuationRoute()">避難ルートを表示する</button>
+  <div id="routeInfo" class="map-help" role="status" aria-live="polite">
+    「避難ルートを表示する」を押すと、現在地から学習用の仮想ルートを生成します。ルート上の分岐点をクリックすると、物語形式の判断問題が別画面で開きます。<b>このルートは学習用で、実際の避難先・安全な経路を保証するものではありません。</b>
+  </div>
+  <div id="positionText" style="margin:15px;background:white;padding:10px;border-radius:10px;">
+    現在地取得中...
+  </div>
 </section>
 
 <section id="panel-learning" class="tab-panel" role="tabpanel" aria-labelledby="tab-learning" hidden>
@@ -467,6 +511,10 @@ border-radius:10px;
     <section class="player-panel" aria-labelledby="playerHeading">
       <h3 id="playerHeading">ログイン中のプレイヤー</h3>
       <p id="currentPlayerInfo" role="status" aria-live="polite">ログインしていません。</p>
+      <div id="accountDeletionArea" hidden style="margin:12px 0;padding:12px;border:1px solid #f0b4b4;border-radius:8px;background:#fff8f8;">
+        <p class="small-note">アカウントを削除すると、登録情報・スコア・回答履歴がこのブラウザーから削除され、ランキングにも表示されなくなります。この操作は取り消せません。</p>
+        <button type="button" id="deleteAccountButton" onclick="deleteCurrentAccount()" style="background:#b42318;">アカウントを削除する</button>
+      </div>
       <div class="record-stats">
         <div class="record-stat"><span>あなたのスコア</span><strong id="playerScore">0点</strong></div>
         <div class="record-stat"><span>あなたの順位</span><strong id="playerRank">--</strong></div>
@@ -1703,7 +1751,7 @@ function setAuthMessage(message, isError=false){
 async function registerAccount(){
     const f=authFields();
     if(!f.name || !f.email || !f.password){setAuthMessage('プレイヤー名・メールアドレス・パスワードをすべて入力してください。',true);return;}
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(f.email)){setAuthMessage('有効なメールアドレスを入力してください。',true);return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)){setAuthMessage('有効なメールアドレスを入力してください。',true);return;}
     if(f.password.length<8){setAuthMessage('パスワードは8文字以上で入力してください。',true);return;}
     if(accounts[f.email]){setAuthMessage('このメールアドレスは登録済みです。ログインしてください。',true);return;}
     if(Object.values(accounts).some(a=>a.name.toLowerCase()===f.name.toLowerCase())){setAuthMessage('このプレイヤー名は使用されています。別の名前を入力してください。',true);return;}
@@ -1730,8 +1778,7 @@ async function establishSession(email){
     getPlayerRecord(currentPlayer);
     savePlayerData();
     document.body.classList.remove('auth-required');
-    document.getElementById('sessionInfo').textContent='ログイン中：'+currentPlayer+'（'+email+'）';
-    document.getElementById('guestStatusButton').textContent='ログイン中：'+currentPlayer;
+    updateAccountControls();
     document.getElementById('authPanel').hidden=true;
     document.getElementById('authPassword').value='';
     renderLeaderboard();
@@ -1739,35 +1786,103 @@ async function establishSession(email){
     renderLearningRecords();
 }
 function openAuthPanel(mode){
+    openSettingsScreen();
     const panel=document.getElementById('authPanel');
     panel.hidden=false;
     document.getElementById('authPlayerName').style.display = mode==='login' ? 'none' : 'block';
     document.querySelector('label[for="authPlayerName"]').style.display = mode==='login' ? 'none' : 'block';
     document.getElementById('authPassword').autocomplete = mode==='register' ? 'new-password' : 'current-password';
-    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    document.getElementById('authRegisterAction').hidden = mode !== 'register';
+    document.getElementById('authLoginAction').hidden = mode !== 'login';
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
     setAuthMessage(mode==='register' ? '新規登録する場合はプレイヤー名・メールアドレス・パスワードを入力してください。' : '登録済みのメールアドレスとパスワードを入力してください。');
 }
 function closeAuthPanel(){ document.getElementById('authPanel').hidden=true; }
-function showGuestStatus(){
-    alert('ゲストとしてプレイできます。ログインしなくても学習や回答が可能です。アカウントにスコアを保存したい場合は「ログイン」または「新規登録」を選んでください。');
+function updateAccountControls(){
+    const toggleButton=document.getElementById('accountToggleButton');
+    const registerButton=document.getElementById('registerOpenButton');
+    if(!toggleButton || !registerButton) return;
+
+    if(loggedInAccount){
+        toggleButton.textContent='ログアウト';
+        toggleButton.style.background='#6c757d';
+        registerButton.hidden=true;
+    }else{
+        toggleButton.textContent='ログイン';
+        toggleButton.style.background='#2a7f62';
+        registerButton.hidden=false;
+    }
+}
+function handleAccountToggle(){
+    if(loggedInAccount){
+        logoutAccount();
+    }else{
+        openAuthPanel('login');
+    }
 }
 function logoutAccount(){
     loggedInAccount=null;
     currentPlayer='ゲスト';
     document.getElementById('authPassword').value='';
-    document.getElementById('sessionInfo').textContent='ゲストとしてプレイ中です。';
-    document.getElementById('guestStatusButton').textContent='ゲストでプレイ中';
+    updateAccountControls();
     document.getElementById('authPanel').hidden=true;
     renderPlayerInfo();
     renderLeaderboard();
     setAuthMessage('ログアウトしました。ゲストとして引き続きプレイできます。');
 }
+function deleteCurrentAccount(){
+    if(!loggedInAccount || !accounts[loggedInAccount]){
+        alert('削除するアカウントにログインしてください。');
+        return;
+    }
+
+    const email = loggedInAccount;
+    const playerName = currentPlayer;
+    const confirmed = confirm(
+        'アカウント「' + playerName + '」を削除しますか？\\n\\n' +
+        '・登録情報\\n・ランキングのスコア\\n・このアカウントの回答履歴と学習記録\\n\\n' +
+        'これらが削除され、元に戻すことはできません。'
+    );
+    if(!confirmed) return;
+
+    // アカウント情報とプレイヤー別スコアを削除する。
+    delete accounts[email];
+    delete playerScores[playerName];
+
+    // 回答履歴にはプレイヤー名が記録されているため、対象者の履歴だけを削除する。
+    learningHistory = learningHistory.filter(item => item.player !== playerName);
+
+    // 苦手問題リストは現行仕様ではプレイヤー別に管理されていないため、
+    // 削除対象者の記録が残らないよう、共有リストも初期化する。
+    wrongEvents = [];
+    weakReviewQueue = [];
+    weakReviewIndex = 0;
+    weakReviewActive = false;
+
+    saveAccounts();
+    savePlayerData();
+    saveLearningData();
+
+    loggedInAccount = null;
+    currentPlayer = 'ゲスト';
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authPanel').hidden = true;
+    updateAccountControls();
+    renderPlayerInfo();
+    renderLeaderboard();
+    renderLearningRecords();
+
+    alert('アカウントと関連する学習記録を削除しました。ゲストとして引き続き利用できます。');
+}
+
 function requireLogin(){ return true; }
 function renderPlayerInfo(){
     const info = document.getElementById('currentPlayerInfo');
     const score = document.getElementById('playerScore');
     const rank = document.getElementById('playerRank');
     if(info) info.textContent = loggedInAccount ? 'ログイン中のプレイヤー：' + currentPlayer : 'ゲストとしてプレイ中です。ゲストのスコアはランキング対象外です。';
+    const deletionArea = document.getElementById('accountDeletionArea');
+    if(deletionArea) deletionArea.hidden = !loggedInAccount;
     const record = loggedInAccount ? getPlayerRecord(currentPlayer) : {score:0,attempts:0,correct:0};
     if(score) score.textContent = record.score + '点';
     const ranked = Object.entries(playerScores).sort((a,b) => b[1].score-a[1].score || b[1].attempts-a[1].attempts || a[0].localeCompare(b[0],'ja'));
@@ -1802,6 +1917,7 @@ function resetLeaderboard(){
     renderLeaderboard();
 }
 loadPlayerData();
+updateAccountControls();
 let weakReviewQueue = [];
 let weakReviewIndex = 0;
 let weakReviewActive = false;
@@ -2370,12 +2486,128 @@ function moveCurrentLocation(){
     }
 }
 
-function focusShelterSearch(){
-    const info = document.getElementById('shelterSearchInfo');
-    if(info){
-        info.style.display = 'block';
-        info.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }
+// 学習用の避難ルート。公開ルーティングAPIを利用して道路形状を取得するが、
+// 目的地は自動生成した仮想地点であり、実際の避難所を示すものではない。
+let learningRouteLayer = null;
+let learningRouteBranches = [];
+let routeRequestInProgress = false;
+
+const routeBranchScenarios = [
+  {
+    kind:'住宅街の分岐点', title:'住宅街の避難ルート：ブロック塀のある道',
+    story:'あなたは住宅街の道を避難先に向かって進んでいる。地震の揺れは収まったが、古いブロック塀にひびが入り、電線も揺れている。少し先には道幅の狭い近道がある。同行している友人が「近道を通れば早いよ」と言った。\n\nこの分岐点で、あなたはどの行動を選ぶ？',
+    choices:['塀や建物から距離を取り、周囲を確認しながら広く安全な道を選ぶ。','ひびの入った塀のすぐ横を通り、近道を急ぐ。','周囲を見ずに、前を走る人について走る。'], correctChoice:0,
+    success:'あなたは塀から離れ、頭上や足元を確認しながら安全そうな道を選んだ。直後に余震が起きたが、倒れそうな塀や落下物から距離を取っていたため、落ち着いて移動を続けられた。',
+    failure:'あなたは危険な塀の近くを通ったり、周囲を確認せずに進んだりしてしまった。余震や落下物に気づくのが遅れ、立ち止まって安全な道を探し直すことになった。災害時は近道より、周囲の危険を避けることが大切だ。',
+    criteria:[{label:'塀・建物・落下物から離れる',keywords:['塀から離れる','建物から離れる','落下物','危険な場所を避ける']},{label:'周囲を確認して安全な道を選ぶ',keywords:['周囲を確認','安全な道','広い道','安全を確認']}],
+    example:'ブロック塀や建物から離れ、落下物に注意して周囲を確認し、安全な道を選ぶ。'
+  },
+  {
+    kind:'川・海の近くの分岐点', title:'水辺の避難ルート：川沿いの道',
+    story:'避難ルートの途中で、川沿いの道と内陸へ向かう坂道に分かれている。大きな地震のあと、スマートフォンに津波・河川の危険を知らせる情報が届いた。川の水面は普段より高く、友人は「橋を渡れば早く着く」と言っている。\n\nあなたはどちらへ進む？',
+    choices:['川や海、橋から離れ、自治体の避難情報に従って高台など安全な場所へ向かう。','水位を確かめるため川岸へ近づく。','近道になる橋を渡って避難を続ける。'], correctChoice:0,
+    success:'あなたは水辺や橋から離れ、避難情報を確認しながら高い場所へ向かった。水位が急に変化しても、危険な川沿いにとどまらずに行動できた。',
+    failure:'あなたは川岸や橋へ近づいてしまい、水位の変化に気づいてから引き返すことになった。水辺では状況を見に行かず、警報や自治体の情報に従って、川・海から離れることが重要だ。',
+    criteria:[{label:'川・海・橋から離れる',keywords:['川から離れる','海から離れる','橋を渡らない','水辺から離れる']},{label:'高台など安全な場所へ避難する',keywords:['高台','高い場所','避難する','避難情報']}],
+    example:'川や海、橋に近づかず、警報や自治体の情報に従って高台など安全な場所へ避難する。'
+  },
+  {
+    kind:'山・斜面の近くの分岐点', title:'山沿いの避難ルート：斜面の異変',
+    story:'山に近い道を歩いていると、雨が強まり、斜面から小石が落ちてきた。地面には細い亀裂があり、山側から低い音が聞こえる。道は山沿いの近道と、斜面から離れる道に分かれている。\n\nこの場面で、あなたはどうする？',
+    choices:['斜面や沢から離れ、自治体の避難情報を確認して安全な場所へ早めに移動する。','斜面の様子を近くで確認してから進む。','近道なので山沿いの道をそのまま進む。'], correctChoice:0,
+    success:'あなたは斜面から離れ、危険な場所を避けて早めに移動した。その後、土砂災害への警戒情報を確認し、安全な場所で状況を確かめることができた。',
+    failure:'あなたは斜面に近づいたり、そのまま進んだりして、土砂の異変から離れる判断が遅れた。大雨のときは斜面や沢に近づかず、危険を感じたら早めに避難することが重要だ。',
+    criteria:[{label:'斜面・沢から離れる',keywords:['斜面から離れる','沢から離れる','山沿いを避ける','土砂から離れる']},{label:'情報を確認し早めに避難する',keywords:['避難情報','早めに避難','安全な場所','自治体']}],
+    example:'斜面や沢から離れ、自治体の情報を確認して安全な場所へ早めに避難する。'
+  }
+];
+
+function setRouteInfo(message){
+  const el=document.getElementById('routeInfo');
+  if(el) el.textContent=message;
+}
+function clearLearningRoute(){
+  if(learningRouteLayer && map){ map.removeLayer(learningRouteLayer); }
+  learningRouteLayer=null; learningRouteBranches=[];
+}
+function openRouteBranch(index){
+  const branch=learningRouteBranches[index];
+  if(!branch) return;
+  const scenario=branch.scenario;
+  const title=scenario.title+'（分岐点'+(index+1)+'）';
+  currentEvent={
+    title:title, story:'【'+scenario.kind+'】\n\n'+scenario.story,
+    success:'<p>'+scenario.success+'</p>', failure:'<p>'+scenario.failure+'</p>',
+    keywords:['避難','安全']
+  };
+  eventLearningGuide[title]={
+    criteria:scenario.criteria, choices:scenario.choices,
+    correctChoice:scenario.correctChoice, example:scenario.example
+  };
+  resetStoryBranch();
+  document.getElementById('eventTitle').textContent=title;
+  document.getElementById('storyText').textContent=currentEvent.story;
+  document.getElementById('answer').value='';
+  document.getElementById('result').style.display='none';
+  document.getElementById('answerButton').disabled=false;
+  document.getElementById('answerButton').textContent='回答して物語を進める';
+  renderChoiceOptions(); setAnswerMode('choice');
+  switchTab('map');
+  openEventWindow();
+}
+async function generateEvacuationRoute(){
+  if(routeRequestInProgress) return;
+  if(!map){ initializeManualMap(); }
+  if(!marker){
+    setRouteInfo('現在地をまだ取得できていません。位置情報を許可して「現在地の取得をもう一度試す」を押してください。現在地を使わない仮ルートは、安全な避難経路として扱えないため生成していません。');
+    document.getElementById('gpsInfo').scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  const start=marker.getLatLng();
+  // 仮想の学習目的地。実際の避難所を検索・特定しているわけではない。
+  const angle=Math.random()*Math.PI*2;
+  const distance=850;
+  const endLat=start.lat+(distance/111000)*Math.cos(angle);
+  const endLon=start.lng+(distance/(111000*Math.cos(start.lat*Math.PI/180)))*Math.sin(angle);
+  const button=document.getElementById('routeButton');
+  routeRequestInProgress=true; button.disabled=true; button.textContent='ルートを生成中…';
+  setRouteInfo('現在地を基準に、道路形状を取得しています。通信環境によっては生成に時間がかかります。');
+  try{
+    const url='https://router.project-osrm.org/route/v1/foot/'+start.lng+','+start.lat+';'+endLon+','+endLat+'?overview=full&geometries=geojson&steps=true';
+    const response=await fetch(url);
+    if(!response.ok) throw new Error('ルートサービスに接続できませんでした');
+    const data=await response.json();
+    if(data.code!=='Ok' || !data.routes || !data.routes.length) throw new Error('この地点の徒歩ルートを取得できませんでした');
+    const route=data.routes[0];
+    const latlngs=route.geometry.coordinates.map(c=>[c[1],c[0]]);
+    clearLearningRoute();
+    const group=L.featureGroup();
+    const line=L.polyline(latlngs,{color:'#e76f00',weight:7,opacity:.88}).addTo(group);
+    const first=L.circleMarker(latlngs[0],{radius:8,color:'#fff',weight:2,fillColor:'#1769aa',fillOpacity:1}).bindTooltip('現在地'); first.addTo(group);
+    const last=L.circleMarker(latlngs[latlngs.length-1],{radius:8,color:'#fff',weight:2,fillColor:'#2a7f62',fillOpacity:1}).bindTooltip('仮想の学習目的地'); last.addTo(group);
+    const indexes=[0.28,0.58,0.80].map(r=>Math.max(1,Math.min(latlngs.length-2,Math.floor((latlngs.length-1)*r))));
+    const scenarios=[routeBranchScenarios[0],routeBranchScenarios[1],routeBranchScenarios[2]];
+    indexes.forEach(function(pointIndex,i){
+      const branchPoint=latlngs[pointIndex];
+      const scenario=scenarios[i];
+      const markerPoint=L.circleMarker(branchPoint,{radius:10,color:'#fff',weight:3,fillColor:'#b42318',fillOpacity:1}).addTo(group);
+      markerPoint.bindTooltip('分岐問題'+(i+1)+'：'+scenario.kind,{direction:'top'});
+      markerPoint.on('click',function(){openRouteBranch(i);});
+      learningRouteBranches.push({latlng:branchPoint,scenario:scenario,marker:markerPoint});
+    });
+    line.on('click',function(event){
+      let nearest=0,nearestDistance=Infinity;
+      learningRouteBranches.forEach(function(branch,i){const d=map.distance(event.latlng,branch.latlng);if(d<nearestDistance){nearestDistance=d;nearest=i;}});
+      openRouteBranch(nearest);
+    });
+    learningRouteLayer=group.addTo(map);
+    map.fitBounds(L.latLngBounds(latlngs),{padding:[30,30]});
+    setRouteInfo('学習用の仮想ルートを表示しました。徒歩距離の目安：約'+(route.distance/1000).toFixed(2)+' km。赤い分岐点、またはオレンジ色のルート線をクリックすると、分岐問題が別画面で開きます。住宅街・水辺・山沿いの3種類の物語を体験できます。これは実際の避難経路・避難所ではありません。災害時は自治体の避難情報と現地の安全を最優先してください。');
+  }catch(error){
+    setRouteInfo('ルートを自動生成できませんでした（'+(error.message||'通信エラー')+'）。通信環境を確認して再試行してください。地図上の表示は実際の避難経路ではないため、災害時の経路判断には使用しないでください。');
+  }finally{
+    routeRequestInProgress=false; button.disabled=false; button.textContent='避難ルートを表示させる';
+  }
 }
 
 // 判定
@@ -2566,6 +2798,22 @@ function updateHiraganaText(root=document.body){
     node.nodeValue=hiraganaMode ? convertTextToHiragana(original) : original;
   }
 }
+function openSettingsScreen(){
+  const overlay=document.getElementById('settingsOverlay');
+  overlay.classList.add('open');
+  document.body.style.overflow='hidden';
+  document.getElementById('settingsCloseButton').focus();
+}
+function closeSettingsScreen(){
+  const overlay=document.getElementById('settingsOverlay');
+  overlay.classList.remove('open');
+  document.body.style.overflow='';
+  document.getElementById('settingsOpenButton').focus();
+}
+document.addEventListener('keydown',function(event){
+  if(event.key==='Escape' && document.getElementById('settingsOverlay').classList.contains('open')) closeSettingsScreen();
+});
+
 function toggleHiraganaMode(){
   hiraganaMode=!hiraganaMode;
   document.body.classList.toggle('hiragana-mode',hiraganaMode);
